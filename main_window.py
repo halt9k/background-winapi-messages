@@ -1,10 +1,10 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
-    QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox
+    QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QAbstractItemView
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, peek_window_under_cursor, populate_window_list, start_sending, on_window_select):
+    def __init__(self, peek_window_under_cursor, on_refresh, start_sending, on_window_select):
         super().__init__()
         self.setWindowTitle("WinApi message test")
         if not self.objectName():
@@ -28,10 +28,11 @@ class MainWindow(QMainWindow):
         # self.window_group.setFrameStyle(QFrame.StyledPanel)
         self.window_listbox = QListWidget(self.window_group)
         self.window_listbox.itemSelectionChanged.connect(on_window_select)
+        self.window_listbox.setSelectionMode( QAbstractItemView.SelectionMode.SingleSelection)
         self.peek_window_button = QPushButton("Peek under cursor", self.window_group)
         self.peek_window_button.clicked.connect(peek_window_under_cursor)
         self.refresh_windows_button = QPushButton("Refresh", self.window_group)
-        self.refresh_windows_button.clicked.connect(populate_window_list)
+        self.refresh_windows_button.clicked.connect(on_refresh)
 
         self.window_layout = QVBoxLayout(self.window_group)
         self.window_layout.addWidget(self.window_listbox)

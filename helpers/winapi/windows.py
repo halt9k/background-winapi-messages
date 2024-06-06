@@ -44,15 +44,13 @@ def hwnd_unsafe_op(post_delay, hwnd, require_focus=False, keep_state=False):
     yield
 
     if post_delay < 0:
-        return
+        state = get_window_state(hwnd) if keep_state else None
+        verboose_sleep(post_delay)
+        if keep_state and state != get_window_state(hwnd):
+            raise Exception(f'Window changed state while sleep: {hwnd}')
 
-    state = get_window_state(hwnd) if keep_state else None
-    verboose_sleep(post_delay)
-    if keep_state and state != get_window_state(hwnd):
-        raise Exception(f'Window changed state while sleep: {hwnd}')
-
-    if require_focus and win32gui.GetForegroundWindow() != hwnd:
-        raise MissingWindowFocusException(f'Window went inactive while sleep: {hwnd}')
+        if require_focus and win32gui.GetForegroundWindow() != hwnd:
+            raise MissingWindowFocusException(f'Window went inactive while sleep: {hwnd}')
 
 
 @contextmanager

@@ -7,7 +7,8 @@ import win32api
 from time import sleep
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QApplication, QListWidgetItem
 
 from helpers.qt import switch_window_flag
 from helpers.winapi.windows import get_title
@@ -15,19 +16,15 @@ from helpers.winapi.windows import get_title
 from main_window import MainWindow
 
 
-def peek_window_under_cursor(self):
-    self.populate_window_list()
-
-
 class App(QApplication):
     def __init__(self):
         super().__init__(sys.argv)
-        self.ui = MainWindow(self.peek_window_under_cursor, self.populate_window_list, self.start_sending,
+        self.ui = MainWindow(self.peek_window_under_cursor, self.on_refresh, self.start_sending,
                              self.on_window_select)
         self.ui.show()
         self.last_caption = ""
 
-        self.populate_window_list()
+        self.populate_window_list(hightlight_new=False)
 
     def log(self, message):
         self.ui.log_text.append(message)
@@ -46,11 +43,20 @@ class App(QApplication):
         win32gui.EnumWindows(callback, hwnds)
         return hwnds
 
-    def populate_window_list(self):
+    def on_refresh(self):
+        self.populate_window_list()
+
+    # TODO check all TODO
+    def populate_window_list(self, hightlight_new=True):
         window_list = [(hwnd, get_title(hwnd)) for hwnd in self.get_all_hwnds()]
+        prev_hwnd = {self.ui.window_listbox.item(x).data(Qt.ItemDataRole.UserRole) for x in range(self.ui.window_listbox.count())}
         self.ui.window_listbox.clear()
         for hwnd, title in window_list:
-            self.ui.window_listbox.addItem(f"{hwnd} - {title}")
+            item = QListWidgetItem(f"{hwnd} - {title}")
+            item.setData(Qt.ItemDataRole.UserRole, hwnd)
+            if hightlight_new and (hwnd not in prev_hwnd):
+                item.setForeground(QColor("red"))
+            self.ui.window_listbox.addItem(item)
 
     def on_window_select(self):
         selected_items = self.ui.window_listbox.selectedItems()
@@ -84,6 +90,19 @@ class App(QApplication):
                 self.sleep_responsively(0.1)
             self.log('Peek over')
 
+    def send_messages(self, hwnd):
+        for _ in range(0, 10):
+            key_hex = self.ui.key_entry.text()
+            if self.ui.keydown_check.isChecked():
+                win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, key_hex, 0)
+                self.log(f"Sent WM_KEYDOWN with {key_hex}")
+            if self.ui.keyup_check.isChecked():
+                win32api.PostMessage(hwnd, win32con.WM_KEYUP, key_hex, 0)
+                self.log(f"Sent WM_KEYUP with {key_hex}")
+            self.sleep_responsively(1)
+
+        self.log(f"Sent done")
+
     def start_sending(self):
         selected_items = self.ui.window_listbox.selectedItems()
         key_hex = self.ui.key_entry.text()
@@ -93,25 +112,12 @@ class App(QApplication):
         if not selected_items or not key_hex:
             self.log("Please select a window and enter a key.")
             return
-
         selected_item = selected_items[0]
-        hwnd = int(selected_item.text().split(" - ")[0], 16)
+        hwnd = selected_item.data(Qt.ItemDataRole.UserRole)
         key_hex = int(key_hex, 16)
 
         self.log(f"Sending messages to window {hwnd} with key {key_hex}")
-
-        def send_messages():
-            for _ in range(0, 100):
-                if keydown:
-                    win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, key_hex, 0)
-                    self.log(f"Sent WM_KEYDOWN with {key_hex}")
-                if keyup:
-                    win32api.PostMessage(hwnd, win32con.WM_KEYUP, key_hex, 0)
-                    self.log(f"Sent WM_KEYUP with {key_hex}")
-                self.sleep_responsively(1)
-
-        import threading
-        threading.Thread(target=send_messages, daemon=True).start()
+        self.send_messages(hwnd)
 
 
 if __name__ == "__main__":
