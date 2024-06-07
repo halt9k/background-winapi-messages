@@ -1,42 +1,15 @@
 #!/usr/bin/env python3
-import contextlib
-import os
 from pathlib import Path
+from dataclasses import dataclass
+from typing import List
 
-import win32process as wproc
-from win32api import GetWindowLong, OpenProcess, CloseHandle
-from win32con import GWL_STYLE, WS_VISIBLE, PROCESS_ALL_ACCESS
+from win32api import CloseHandle, OpenProcess, GetWindowLong
+from win32con import PROCESS_ALL_ACCESS, GWL_STYLE, WS_VISIBLE
 from win32gui import GetWindowText, EnumWindows
-
-# TODO improve param is custom arg
-def on_enum_window(hwnd, param):
-    pid = param.get("pid", None)
-    data = param.get("data", None)
-
-    if pid and wproc.GetWindowThreadProcessId(hwnd)[1] != pid:
-        return True
-
-    text = GetWindowText(hwnd)
-    if not text:
-        return True
-
-    style = GetWindowLong(hwnd, GWL_STYLE)
-    if style & WS_VISIBLE:
-        if data is not None:
-            data.append((hwnd, text))
-        else:
-            print("enum_windows_proc: %08X - %s" % (hwnd, text))
-    return True
+from win32process import GetModuleFileNameEx, GetWindowThreadProcessId
 
 
-def get_process_windows(pid=None):
-    data = []
-    param = {"pid": pid, "data": data}
-    EnumWindows(on_enum_window, param)
-    return data
-
-
-def try_get_exe_path(pid):
+def get_unprotected_module_path(pid):
     try:
         proc = OpenProcess(PROCESS_ALL_ACCESS, 0, pid)
     except:
@@ -44,20 +17,58 @@ def try_get_exe_path(pid):
         return None
 
     try:
-        return wproc.GetModuleFileNameEx(proc, None)
+        return GetModuleFileNameEx(proc, None)
     except:
         # print("Error getting process name: {0:}".format(traceback.format_exc()))
         return None
     finally:
         CloseHandle(proc)
 
-# TODO improve
-def get_module_paths(proc_filter_func=None):
-    procs = wproc.EnumProcesses()
-    pid_paths = [(pid, try_get_exe_path(pid)) for pid in procs]
-    filtered = [(pid, Path(path).name) for pid, path in pid_paths if path]
 
-    if proc_filter_func:
-        filtered = [(pid, bname) for pid, bname in filtered if proc_filter_func(bname)]
+@dataclass(init=True)
+class WindowInfo:
+    hwnd: int
+    pid: int
+    module_path: str
+    style: int
+    visible: bool
+    title: str
+
+
+def on_enum_window(hwnd, data: List[WindowInfo]):
+    pid = GetWindowThreadProcessId(hwnd)[1]
+    module_path = get_unprotected_module_path(pid) if pid else None
+    title = GetWindowText(hwnd)
+    style = GetWindowLong(hwnd, GWL_STYLE)
+    visible = bool(WS_VISIBLE & style)
+
+    data += [WindowInfo(hwnd, pid, module_path, style, visible, title)]
+    return True
+
+
+def filter_process_windows(data: List[WindowInfo],
+                           pid: int = None,
+                           module_exe: str = None,
+                           remove_invisible=True) -> List[WindowInfo]:
+    filtered = []
+    for wnd in data:
+        if pid and wnd.pid != pid:
+            continue
+        if module_exe and (wnd.module_path is None or module_exe.lower() not in wnd.module_path.lower()):
+            continue
+        if remove_invisible and not wnd.visible:
+            continue
+        filtered += [wnd]
+
+    before, after = len(data), len(filtered)
+    if before > after:
+        print(f'get_process_windows filter: {before} to {after}')
 
     return filtered
+
+
+def get_process_windows() -> List[WindowInfo]:
+    data = []
+    EnumWindows(on_enum_window, data)
+    data.sort(key=lambda wnd: wnd.pid)
+    return data

@@ -6,7 +6,7 @@ import win32con
 import win32gui
 import pyautogui
 
-from helpers.winapi.processes import get_module_paths, get_process_windows
+from helpers.winapi.processes import get_process_windows, filter_process_windows
 
 
 class MissingWindowFocusException(Exception):
@@ -92,7 +92,7 @@ def get_title(hwnd):
 
 
 def set_title(hwnd, title):
-    """ Be aware that userscript cannot read this though """
+    """ Be aware that Chrome userscript cannot read this though """
     win32gui.SetWindowText(hwnd, title)
 
 
@@ -100,17 +100,11 @@ def is_window_closed(hwnd):
     return not win32gui.IsWindow(hwnd)
 
 
-def is_active_window_maxed(proc_filter_func) -> bool:
-    hwnd = win32gui.GetForegroundWindow()
-    if not hwnd:
-        return False
+def is_any_window_maxed(module=None) -> bool:
+    # hwnd = win32gui.GetForegroundWindow()
 
-    procs = get_module_paths(proc_filter_func)
-    handles = [get_process_windows(x[0]) for x in procs]
-    handles_with_windows = [x for x in handles if x != []]
-    flatten = [x[0] for y in handles_with_windows for x in y]
+    wnds = get_process_windows()
+    visible = filter_process_windows(wnds, module_exe=module)
+    maxed: bool = any([get_window_state(wnd.hwnd) == WindowState.MAX for wnd in visible])
 
-    if hwnd not in flatten:
-        return False
-
-    return get_window_state(hwnd) == WindowState.MAX
+    return maxed

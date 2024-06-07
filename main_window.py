@@ -1,10 +1,36 @@
+import win32con
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
-    QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QAbstractItemView
+    QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout, QFrame
+
+# TODO
+mod_keys = {'LSHIFT': win32con.VK_LSHIFT, 'LCONTROL': win32con.VK_LCONTROL, 'LALT': 0xA4}
+
+
+class CommandWidget(QWidget):
+    def __init__(self, parent, name, enabled=True, int_param=None, enum_param=None):
+        super().__init__(parent)
+        self.layout = QHBoxLayout(self)
+
+        self.enabled_check = QCheckBox(name, self)
+        self.enabled_check.setChecked(enabled)
+        self.layout.addWidget(self.enabled_check)
+
+        if int_param:
+            self.int_param_edit = QLineEdit(self)
+            self.int_param_edit.setMask('\\0\\xHh')
+            self.int_param_edit.setText(str(int_param))
+            self.layout.addWidget(self.int_param_edit)
+
+        if enum_param:
+            self.enum_param_dropdown = QComboBox(self)
+            for key, value in enum_param.items():
+                self.enum_param_dropdown.addItem(key, value)
+            self.layout.addWidget(self.enum_param_dropdown)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, peek_window_under_cursor, on_refresh, start_sending, on_window_select):
+    def __init__(self, on_peek_window_under_cursor, on_refresh, on_start_sending, on_window_select, on_guess_char):
         super().__init__()
         self.setWindowTitle("WinApi message test")
         if not self.objectName():
@@ -29,8 +55,8 @@ class MainWindow(QMainWindow):
         self.window_listbox = QListWidget(self.window_group)
         self.window_listbox.itemSelectionChanged.connect(on_window_select)
         self.window_listbox.setSelectionMode( QAbstractItemView.SelectionMode.SingleSelection)
-        self.peek_window_button = QPushButton("Peek under cursor", self.window_group)
-        self.peek_window_button.clicked.connect(peek_window_under_cursor)
+        self.peek_window_button = QPushButton("Pick under cursor", self.window_group)
+        self.peek_window_button.clicked.connect(on_peek_window_under_cursor)
         self.refresh_windows_button = QPushButton("Refresh", self.window_group)
         self.refresh_windows_button.clicked.connect(on_refresh)
 
@@ -40,19 +66,34 @@ class MainWindow(QMainWindow):
         self.window_layout.addWidget(self.refresh_windows_button)
 
         # self.command_group.setFrameShape(QFrame.StyledPanel)
-        self.key_label = QLabel("Enter Key (Hex):", self.command_group)
-        self.key_entry = QLineEdit(self.command_group)
-        self.keydown_check = QCheckBox("Key Down", self.command_group)
-        self.keydown_check.setChecked(True)
-        self.keyup_check = QCheckBox("Key Up", self.command_group)
+        self.command_info = QFrame(self.command_group)
+        self.key_label = QLabel("Guess char to keycode:", self.command_info)
+        self.key_entry = QLineEdit('', self.command_info)
+        self.key_entry.setMaximumWidth(50)
+        self.key_entry.setInputMask('x')
+        self.key_entry.textChanged.connect(on_guess_char)
+        self.code_label = QLabel("", self.command_info)
+
+        self.info_layout = QHBoxLayout(self.command_info)
+        self.info_layout.addWidget(self.key_label)
+        self.info_layout.addWidget(self.key_entry)
+        self.info_layout.addWidget(self.code_label)
+
+        self.keybd_command = CommandWidget(self.command_group, name='keybd_event (down?)', enum_param=mod_keys)
+        self.keydown_command = CommandWidget(self.command_group, name='PostMessage WM_KEYDOWN', int_param=65)
+        self.char_command = CommandWidget(self.command_group, name='PostMessage WM_CHAR', int_param=66)
+        self.keyup_command = CommandWidget(self.command_group, name='PostMessage WM_KEYUP', int_param=67)
+        self.keybd_up_command = CommandWidget(self.command_group, name='keybd_event KEYEVENTF_KEYUP', enum_param=mod_keys)
         self.start_sending_button = QPushButton("Start Sending", self.command_group)
-        self.start_sending_button.clicked.connect(start_sending)
+        self.start_sending_button.clicked.connect(on_start_sending)
 
         self.command_layout = QVBoxLayout(self.command_group)
-        self.command_layout.addWidget(self.key_label)
-        self.command_layout.addWidget(self.key_entry)
-        self.command_layout.addWidget(self.keydown_check)
-        self.command_layout.addWidget(self.keyup_check)
+        self.command_layout.addWidget(self.command_info)
+        self.command_layout.addWidget(self.keybd_command)
+        self.command_layout.addWidget(self.keydown_command)
+        self.command_layout.addWidget(self.char_command)
+        self.command_layout.addWidget(self.keyup_command)
+        self.command_layout.addWidget(self.keybd_up_command)
         self.command_layout.addWidget(self.start_sending_button)
 
         # QMetaObject.connectSlotsByName(self)
