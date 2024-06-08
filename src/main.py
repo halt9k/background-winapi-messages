@@ -19,7 +19,7 @@ from helpers.winapi.other import MouseTracker, get_window_info_under_cursor
 from helpers.winapi.processes import get_process_windows, filter_process_windows
 from helpers.winapi.windows import get_title
 # Qt intellisense pip install PySide6-stubs
-from main_window import MainWindow
+from ui.main_window import MainWindow
 
 
 class App(QApplication):
