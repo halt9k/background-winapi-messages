@@ -55,14 +55,14 @@ class MainWindow(QMainWindow):
         self.window_listbox = QListWidget(self.window_group)
         self.window_listbox.itemSelectionChanged.connect(on_window_select)
         self.window_listbox.setSelectionMode( QAbstractItemView.SelectionMode.SingleSelection)
-        self.peek_window_button = QPushButton("Pick under cursor", self.window_group)
-        self.peek_window_button.clicked.connect(on_peek_window_under_cursor)
+        self.pick_windows_button = QPushButton("Pick under cursor", self.window_group)
+        self.pick_windows_button.clicked.connect(on_peek_window_under_cursor)
         self.refresh_windows_button = QPushButton("Refresh", self.window_group)
         self.refresh_windows_button.clicked.connect(on_refresh)
 
         self.window_layout = QVBoxLayout(self.window_group)
         self.window_layout.addWidget(self.window_listbox)
-        self.window_layout.addWidget(self.peek_window_button)
+        self.window_layout.addWidget(self.pick_windows_button)
         self.window_layout.addWidget(self.refresh_windows_button)
 
         # self.command_group.setFrameShape(QFrame.StyledPanel)
@@ -84,8 +84,8 @@ class MainWindow(QMainWindow):
         self.char_command = CommandWidget(self.command_group, name='PostMessage WM_CHAR', int_param=66)
         self.keyup_command = CommandWidget(self.command_group, name='PostMessage WM_KEYUP', int_param=67)
         self.keybd_up_command = CommandWidget(self.command_group, name='keybd_event KEYEVENTF_KEYUP', enum_param=mod_keys)
-        self.start_sending_button = QPushButton("Start Sending", self.command_group)
-        self.start_sending_button.clicked.connect(on_start_sending)
+        self.send_messages_button = QPushButton("Start Sending", self.command_group)
+        self.send_messages_button.clicked.connect(on_start_sending)
 
         self.command_layout = QVBoxLayout(self.command_group)
         self.command_layout.addWidget(self.command_info)
@@ -94,6 +94,6 @@ class MainWindow(QMainWindow):
         self.command_layout.addWidget(self.char_command)
         self.command_layout.addWidget(self.keyup_command)
         self.command_layout.addWidget(self.keybd_up_command)
-        self.command_layout.addWidget(self.start_sending_button)
+        self.command_layout.addWidget(self.send_messages_button)
 
         # QMetaObject.connectSlotsByName(self)

@@ -1,0 +1,89 @@
+import win32api
+import win32con
+from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtWidgets import QWidget
+
+from src.helpers.python_extensions import catch_exceptions, context_switch
+from src.helpers.qt import switch_window_flag, QButtonThread
+from src.helpers.winapi.hotkey_events import virtual_code
+from src.helpers.winapi.other import get_window_info_under_cursor
+
+
+class SendMessagesThread(QButtonThread):
+    # QTimer is better option for this specific task,
+    # but thread template may be handy for future extensions,
+    # since this is also sandbox for Qt hwnd experiments
+
+    def __init__(self, ui: QWidget, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ui = ui
+
+    def get_selected_window(self):
+        selected_items = self.ui.window_listbox.selectedItems()
+
+        count = len(selected_items)
+        if count == 0:
+            return None
+        elif count == 1:
+            item = selected_items[0]
+            return item.data(Qt.ItemDataRole.UserRole)
+        else:
+            assert False
+
+    def try_send_messages(self):
+        if not self.ui.isActiveWindow():
+            hwnd, title = get_window_info_under_cursor()
+            self.log.emit(f'\nTrying to send to hwnd under cursor: {hwnd}')
+        else:
+            hwnd = self.get_selected_window()
+            if not hwnd:
+                self.log.emit(f'\nNo hwnd selected to test background send: {hwnd}')
+                return
+            else:
+                self.log.emit(f'\nTrying to send to background hwnd: {hwnd}')
+
+        # key_override_str = self.ui.key_entry.text()
+        # key_hex = int(key_override_str, 16) if key_override_str else None
+
+        if self.ui.keybd_command.enabled_check.isChecked():
+            data = self.ui.keybd_command.enum_param_dropdown.currentData(Qt.ItemDataRole.UserRole)
+            win32api.keybd_event(data, 0, 0, 0)
+            self.log.emit(f"keybd_event {data}")
+            self.msleep(200)
+
+        if self.ui.keydown_command.enabled_check.isChecked():
+            int(self.ui.keydown_command.int_param_edit.text())
+            key_hex = virtual_code('a')
+            win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, key_hex, 0)
+            self.log.emit(f"PostMessage WM_KEYDOWN {key_hex}")
+            self.msleep(200)
+
+        if self.ui.char_command.enabled_check.isChecked():
+            key_hex = virtual_code('b')
+            win32api.PostMessage(hwnd, win32con.WM_CHAR, key_hex, 0)
+            self.log.emit(f"PostMessage WM_KEYDOWN {key_hex}")
+            self.msleep(200)
+
+        if self.ui.keyup_command.enabled_check.isChecked():
+            key_hex = virtual_code('c')
+            win32api.PostMessage(hwnd, win32con.WM_KEYUP, key_hex, 0)
+            self.log.emit(f"PostMessage WM_KEYUP {key_hex}")
+            self.msleep(200)
+
+        if self.ui.keybd_command.enabled_check.isChecked():
+            data = self.ui.keybd_command.enum_param_dropdown.currentData(Qt.ItemDataRole.UserRole)
+            win32api.keybd_event(data, 0, win32con.KEYEVENTF_KEYUP, 0)
+            self.log.emit(f"keybd_event (works only with focus?) KEYEVENTF_KEYUP {data}")
+            self.msleep(200)
+
+    def run(self):
+        self.log.emit(f"Next 10s sending messages to background selected window or \n"
+                      f"try to switch window to test foreground send")
+
+        def on_err(e: Exception):
+            self.log.emit('Safe_catch: ' + str(e))
+        with context_switch(catch_exceptions(on_err), False):
+            for _ in range(0, 10):
+                self.try_send_messages()
+                self.msleep(1000)
+        self.log.emit(f"Send over")
