@@ -3,8 +3,12 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
     QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout, QFrame
 
-# TODO
-mod_keys = {'LSHIFT': win32con.VK_LSHIFT, 'LCONTROL': win32con.VK_LCONTROL, 'LALT': 0xA4}
+# TODO not optimal place to declare
+mod_keys = {'LSHIFT': win32con.VK_LSHIFT,
+            'LCONTROL': win32con.VK_LCONTROL,
+            'LALT': win32con.VK_LMENU,
+            'VK_RETURN': win32con.VK_RETURN,
+            'VK_TAB': win32con.VK_TAB,}
 
 
 class CommandWidget(QWidget):
@@ -79,21 +83,30 @@ class MainWindow(QMainWindow):
         self.info_layout.addWidget(self.key_entry)
         self.info_layout.addWidget(self.code_label)
 
-        self.keybd_command = CommandWidget(self.command_group, name='keybd_event (down?)', enum_param=mod_keys)
-        self.keydown_command = CommandWidget(self.command_group, name='PostMessage WM_KEYDOWN', int_param=65)
-        self.char_command = CommandWidget(self.command_group, name='PostMessage WM_CHAR', int_param=66)
-        self.keyup_command = CommandWidget(self.command_group, name='PostMessage WM_KEYUP', int_param=67)
-        self.keybd_up_command = CommandWidget(self.command_group, name='keybd_event KEYEVENTF_KEYUP', enum_param=mod_keys)
+        self.send_down_command = CommandWidget(self.command_group, name='SendMessage WM_KEYDOWN', enum_param=mod_keys)
+        self.py_keybd_command = CommandWidget(self.command_group, name='keybd_event (down?)', enum_param=mod_keys)
+        self.post_down_command = CommandWidget(self.command_group, name='PostMessage WM_KEYDOWN', int_param=65)
+        self.post_char_command = CommandWidget(self.command_group, name='PostMessage WM_CHAR', int_param=66)
+        self.send_char_command = CommandWidget(self.command_group, name='SendMessage WM_CHAR', int_param=67)
+        self.post_up_command = CommandWidget(self.command_group, name='PostMessage WM_KEYUP', int_param=68)
+        self.py_keybd_up_command = CommandWidget(self.command_group, name='keybd_event KEYEVENTF_KEYUP', enum_param=mod_keys)
+        self.send_up_command = CommandWidget(self.command_group, name='SendMessage WM_KEYUP', enum_param=mod_keys)
+
         self.send_messages_button = QPushButton("Start Sending", self.command_group)
         self.send_messages_button.clicked.connect(on_start_sending)
 
         self.command_layout = QVBoxLayout(self.command_group)
         self.command_layout.addWidget(self.command_info)
-        self.command_layout.addWidget(self.keybd_command)
-        self.command_layout.addWidget(self.keydown_command)
-        self.command_layout.addWidget(self.char_command)
-        self.command_layout.addWidget(self.keyup_command)
-        self.command_layout.addWidget(self.keybd_up_command)
+
+        self.command_layout.addWidget(self.send_down_command)
+        self.command_layout.addWidget(self.py_keybd_command)
+        self.command_layout.addWidget(self.post_down_command)
+        self.command_layout.addWidget(self.post_char_command)
+        self.command_layout.addWidget(self.send_char_command)
+        self.command_layout.addWidget(self.post_up_command)
+        self.command_layout.addWidget(self.py_keybd_up_command)
+        self.command_layout.addWidget(self.send_up_command)
+
         self.command_layout.addWidget(self.send_messages_button)
 
         # QMetaObject.connectSlotsByName(self)
