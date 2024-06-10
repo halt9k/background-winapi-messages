@@ -32,16 +32,12 @@ class SendMessagesThread(QButtonThread):
             assert False
 
     def try_send_messages(self):
-        if not self.ui.isActiveWindow():
-            hwnd, title = get_window_info_under_cursor()
-            self.log.emit(f'\nTrying to send to hwnd under cursor: {hwnd}')
+        hwnd = self.get_selected_window()
+        if not hwnd:
+            self.log.emit(f'\nNo hwnd selected to test background send: {hwnd}')
+            return
         else:
-            hwnd = self.get_selected_window()
-            if not hwnd:
-                self.log.emit(f'\nNo hwnd selected to test background send: {hwnd}')
-                return
-            else:
-                self.log.emit(f'\nTrying to send to background hwnd: {hwnd}')
+            self.log.emit(f'\nTrying to send to background hwnd: {hwnd}')
 
         # key_override_str = self.ui.key_entry.text()
         # key_hex = int(key_override_str, 16) if key_override_str else None

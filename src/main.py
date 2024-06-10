@@ -37,7 +37,8 @@ class App(QApplication):
     @Slot(str)
     def on_log(self, message):
         self.ui.log_text.append(message)
-        self.ui.log_text.ensureCursorVisible()
+        # self.ui.log_text.ensureCursorVisible()
+        self.ui.log_text.scrollContentsBy(0, self.ui.log_text.contentsMargins().bottom())
 
     def on_refresh(self):
         self.update_hwnd_list()
