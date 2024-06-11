@@ -1,13 +1,11 @@
-import threading
-from concurrent.futures import ThreadPoolExecutor
 import sys
 from pathlib import Path
-
 
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import QApplication, QWidget
 # Qt intellisense pip install PySide6-stubs
 
+import os
 from helpers.qt import QListWidgetItemEx, QButtonThread, switch_window_flag
 from helpers.winapi.hotkey_events import virtual_code
 from helpers.winapi.other import MouseTracker

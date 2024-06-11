@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QWidget
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
 from src.helpers.qt import switch_window_flag, QButtonThread
+from src.helpers.virtual_methods import override
 from src.helpers.winapi.hotkey_events import virtual_code
 from src.helpers.winapi.other import get_window_info_under_cursor
 from src.ui.main_window import MainWindow
@@ -56,21 +57,20 @@ class SendMessagesThread(QButtonThread):
 
         if self.ui.post_down_command.enabled_check.isChecked():
             code = int(self.ui.post_down_command.int_param_edit.text())
-            assert code == virtual_code('a')
             win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, code, 0)
             self.log.emit(f"PostMessage WM_KEYDOWN {code}")
-            self.msleep(200)
-
-        if self.ui.send_char_command.enabled_check.isChecked():
-            code = int(self.ui.send_char_command.int_param_edit.text())
-            win32api.SendMessage(hwnd, win32con.WM_CHAR, code, 0)
-            self.log.emit(f"SendMessage WM_CHAR {code}")
             self.msleep(200)
 
         if self.ui.post_char_command.enabled_check.isChecked():
             code = int(self.ui.post_char_command.int_param_edit.text())
             win32api.PostMessage(hwnd, win32con.WM_CHAR, code, 0)
             self.log.emit(f"PostMessage WM_CHAR {code}")
+            self.msleep(200)
+
+        if self.ui.send_char_command.enabled_check.isChecked():
+            code = int(self.ui.send_char_command.int_param_edit.text())
+            win32api.SendMessage(hwnd, win32con.WM_CHAR, code, 0)
+            self.log.emit(f"SendMessage WM_CHAR {code}")
             self.msleep(200)
 
         if self.ui.post_up_command.enabled_check.isChecked():
@@ -82,7 +82,7 @@ class SendMessagesThread(QButtonThread):
         if self.ui.py_keybd_up_command.enabled_check.isChecked():
             data = self.ui.py_keybd_up_command.enum_param_dropdown.currentData(Qt.ItemDataRole.UserRole)
             win32api.keybd_event(data, 0, win32con.KEYEVENTF_KEYUP, 0)
-            self.log.emit(f"keybd_event (works only with focus?) KEYEVENTF_KEYUP {data}")
+            self.log.emit(f"keybd_event (focused only?) KEYEVENTF_KEYUP {data}")
             self.msleep(200)
 
         if self.ui.send_up_command.enabled_check.isChecked():
@@ -91,7 +91,9 @@ class SendMessagesThread(QButtonThread):
             self.log.emit(f"SendMessage WM_KEYUP {data}")
             self.msleep(200)
 
+    @override
     def run(self):
+        super().run()
         self.log.emit(f"Next 10s sending messages to background selected window or \n"
                       f"try to switch window to test foreground send")
 

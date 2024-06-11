@@ -1,11 +1,10 @@
 import contextlib
-from typing import Any, Callable
-
-import PySide6
 from PySide6.QtCore import Qt, QThread, Signal, Slot
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QWidget, QListWidgetItem, QAbstractButton
+import pydevd
 
+from src.helpers.virtual_methods import virutalmethod
 from src.helpers.python_extensions import context_switch
 
 
@@ -59,6 +58,11 @@ class QContextedThread(QThread):
     def enter_contexts(self):
         for c in self.contexts:
             c.__enter__()
+
+    @virutalmethod
+    def run(self):
+        # without this debug won't hit breakpoints in the threads
+        pydevd.settrace(suspend=False)
 
     @Slot()
     def exit_contexts(self):
