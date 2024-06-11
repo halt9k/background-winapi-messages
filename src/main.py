@@ -37,7 +37,6 @@ class App(QApplication):
     @Slot(str)
     def on_log(self, message):
         self.ui.log_text.append(message)
-        # self.ui.log_text.ensureCursorVisible()
         self.ui.log_text.scrollContentsBy(0, self.ui.log_text.contentsMargins().bottom())
 
     def on_refresh(self):
@@ -45,19 +44,21 @@ class App(QApplication):
 
     def update_hwnd_list(self, hightlight_new=True, bold_if_visible=True):
         wnds = filter_process_windows(get_process_windows(), remove_invisible=False)
+        prev_len = self.ui.window_listbox.count()
         prev_hwnds = {self.ui.window_listbox.item(x).data(Qt.ItemDataRole.UserRole) for x in
                       range(self.ui.window_listbox.count())}
 
         self.ui.window_listbox.clear()
         for info in wnds:
             module = Path(info.module_path).name if info.module_path else "-"
-            desc = f"{module}   pid: {info.pid}   hwnd: {info.hwnd}   visible: {info.visible}   title: {info.title}"
+            desc = f"{module}  parent: {info.parent_hwnd}  pid: {info.pid}   hwnd: {info.hwnd}   visible: {info.visible}   title: {info.title}"
             item = QListWidgetItemEx(key=info.hwnd,
                                      text=desc,
                                      font_bold=bold_if_visible and info.visible,
                                      font_red=hightlight_new and info.hwnd not in prev_hwnds)
             self.ui.window_listbox.addItem(item)
-        self.on_log('Updated')
+        count_diff = len(wnds) - prev_len
+        self.on_log(f'Updated, diff: {count_diff}. Newly opened are red.')
 
     def on_window_select(self):
         pass

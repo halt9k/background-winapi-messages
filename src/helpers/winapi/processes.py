@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple, Optional, Union
 
 from win32api import CloseHandle, OpenProcess, GetWindowLong
 from win32con import PROCESS_ALL_ACCESS, GWL_STYLE, WS_VISIBLE
-from win32gui import GetWindowText, EnumWindows
+from win32gui import GetWindowText, EnumWindows, EnumChildWindows
 from win32process import GetModuleFileNameEx, GetWindowThreadProcessId
 
 
@@ -28,6 +28,7 @@ def get_unprotected_module_path(pid):
 @dataclass(init=True)
 class WindowInfo:
     hwnd: int
+    parent_hwnd: int
     pid: int
     module_path: str
     style: int
@@ -35,14 +36,21 @@ class WindowInfo:
     title: str
 
 
-def on_enum_window(hwnd, data: List[WindowInfo]):
+@dataclass(init=True)
+class Data:
+    wnds: List[WindowInfo]
+    known_parent_hwnd: Optional[int]
+
+
+def on_enum_window(hwnd, data: Data):
+    parent = data.known_parent_hwnd
     pid = GetWindowThreadProcessId(hwnd)[1]
     module_path = get_unprotected_module_path(pid) if pid else None
     title = GetWindowText(hwnd)
     style = GetWindowLong(hwnd, GWL_STYLE)
     visible = bool(WS_VISIBLE & style)
 
-    data += [WindowInfo(hwnd, pid, module_path, style, visible, title)]
+    data.wnds += [WindowInfo(hwnd, parent, pid, module_path, style, visible, title)]
     return True
 
 
@@ -68,7 +76,10 @@ def filter_process_windows(data: List[WindowInfo],
 
 
 def get_process_windows() -> List[WindowInfo]:
-    data = []
+    data = Data([], None)
     EnumWindows(on_enum_window, data)
-    data.sort(key=lambda wnd: wnd.pid)
-    return data
+    for wnd in data.wnds:
+        data.known_parent_hwnd = wnd.hwnd
+        EnumChildWindows(wnd.hwnd, on_enum_window, data)
+    data.wnds.sort(key=lambda wnd: wnd.pid)
+    return data.wnds

@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
         self.window_listbox = QListWidget(self.window_group)
         self.window_listbox.itemSelectionChanged.connect(on_window_select)
         self.window_listbox.setSelectionMode( QAbstractItemView.SelectionMode.SingleSelection)
-        self.pick_windows_button = QPushButton("Pick under cursor", self.window_group)
+        self.pick_windows_button = QPushButton("Pick under cursor...", self.window_group)
         self.pick_windows_button.clicked.connect(on_peek_window_under_cursor)
         self.refresh_windows_button = QPushButton("Refresh", self.window_group)
         self.refresh_windows_button.clicked.connect(on_refresh)
@@ -92,7 +92,7 @@ class MainWindow(QMainWindow):
         self.py_keybd_up_command = CommandWidget(self.command_group, name='keybd_event KEYEVENTF_KEYUP', enum_param=mod_keys)
         self.send_up_command = CommandWidget(self.command_group, name='SendMessage WM_KEYUP', enum_param=mod_keys)
 
-        self.send_messages_button = QPushButton("Start Sending", self.command_group)
+        self.send_messages_button = QPushButton("Start Sending...", self.command_group)
         self.send_messages_button.clicked.connect(on_start_sending)
 
         self.command_layout = QVBoxLayout(self.command_group)
