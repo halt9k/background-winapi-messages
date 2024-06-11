@@ -6,7 +6,7 @@ import win32con
 import win32gui
 import pyautogui
 
-from helpers.winapi.processes import get_process_windows, filter_process_windows
+from src.helpers.winapi.processes import get_process_windows, filter_process_windows
 
 
 class MissingWindowFocusException(Exception):

@@ -5,7 +5,7 @@ from datetime import datetime
 import win32api
 from win32gui import WindowFromPoint
 
-from helpers.winapi.windows import get_title
+from src.helpers.winapi.windows import get_title
 
 
 class MouseTracker:

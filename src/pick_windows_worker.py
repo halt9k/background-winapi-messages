@@ -1,3 +1,4 @@
+import win32gui
 from PySide6.QtCore import QThread, Signal, Slot
 
 from src.helpers.python_extensions import catch_exceptions, ChangeTracker, context_switch
@@ -16,33 +17,33 @@ class PickWindowsThread(QButtonThread):
         super().__init__(*args, **kwargs)
         self.pick_hwnd.connect(on_pick_hwnd)
 
-    def check_window_under_cursor(self, mouse_tracker: MouseTracker, window_tracker: ChangeTracker) -> bool:
-        changed, (hwnd, title) = window_tracker.track()
+    def check_window_under_cursor(self, cursor_wnd, focused_wnd: ChangeTracker) -> bool:
+        changed, (hwnd, title) = cursor_wnd.track()
 
         if changed:
             self.log.emit(f'Hwnd: {hwnd}, title: {title}')
 
-        if mouse_tracker.track(10) > 3:
+        if focused_wnd.track()[0]:
             self.pick_hwnd.emit(hwnd)
             return False
-
-        self.msleep(100)
         return True
 
     def run(self):
         self.log.emit("\n"
-                      "Move cursor around next 10 sec and check log.\n"
-                      "Idle 3s to auto select hwnd in the list.\n")
+                      "Move cursor around next 10s and check log.\n"
+                      "Change focus (click) to select hwnd in the list.\n")
 
         def on_err(e: Exception):
             self.log.emit('Safe_catch: ' + str(e))
 
-        with context_switch(catch_exceptions(on_err), True):
-            mouse_tracker = MouseTracker()
-            title_tracker = ChangeTracker(get_window_info_under_cursor)
+        with context_switch(catch_exceptions(on_err), False):
+            # mouse_tracker = MouseTracker()
+            cursor_wnd_tracker = ChangeTracker(get_window_info_under_cursor)
+            focused_wnd_tracker = ChangeTracker(win32gui.GetForegroundWindow)
 
             for _ in range(0, 100):
-                if not self.check_window_under_cursor(mouse_tracker, title_tracker):
+                if not self.check_window_under_cursor(cursor_wnd_tracker, focused_wnd_tracker):
                     break
+                self.msleep(100)
 
         self.log.emit('Pick over')
