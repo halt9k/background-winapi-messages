@@ -1,4 +1,3 @@
-import functools
 from functools import wraps
 from typing_extensions import override as typing_extensions_override
 

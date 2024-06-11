@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-from pathlib import Path
 from dataclasses import dataclass
 from typing import List, Tuple, Optional, Union
 

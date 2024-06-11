@@ -1,6 +1,8 @@
+import inspect
 import threading
 from contextlib import contextmanager, nullcontext
-from typing import Tuple, Any
+from typing import Tuple, Any, Type, List
+import fnmatch
 
 
 def context_switch(context, enabled):
@@ -45,3 +47,15 @@ class ChangeTracker:
         self.prev_value = cur_value
 
         return changed, cur_value
+
+
+def get_named_consts(py_module, mask: str, of_type: Type, place_on_top: [], exclude: [str] = None) \
+        -> List[Tuple[str, int]]:
+    members = [m for m in inspect.getmembers(py_module) if type(m[1]) == of_type]
+
+    if not exclude:
+        exclude = []
+    members = [m for m in members if fnmatch.fnmatch(m[0], mask) and m[0] not in exclude]
+
+    members.sort(key=lambda m: m[1] in place_on_top, reverse=True)
+    return members

@@ -6,9 +6,10 @@ from PySide6.QtWidgets import QWidget
 from src.helpers.python_extensions import catch_exceptions, context_switch
 from src.helpers.qt import switch_window_flag, QButtonThread
 from src.helpers.virtual_methods import override
+from src.helpers.winapi import mouse_events
 from src.helpers.winapi.hotkey_events import virtual_code
-from src.helpers.winapi.other import get_window_info_under_cursor
-from src.ui.main_window import MainWindow
+from src.messages import run_test_message, UiArgs
+from src.ui.main_window import CommandWidget, CommandGroup, WindowGroup
 
 
 class SendMessagesThread(QButtonThread):
@@ -16,12 +17,13 @@ class SendMessagesThread(QButtonThread):
     # but thread template may be handy for future extensions,
     # since this is also sandbox for Qt hwnd experiments
 
-    def __init__(self, ui: MainWindow, *args, **kwargs):
+    def __init__(self, ui_cg: CommandGroup, ui_wg: WindowGroup, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ui = ui
+        self.ui_cg = ui_cg
+        self.ui_wg = ui_wg
 
     def get_selected_window(self):
-        selected_items = self.ui.window_listbox.selectedItems()
+        selected_items = self.ui_wg.window_listbox.selectedItems()
 
         count = len(selected_items)
         if count == 0:
@@ -35,60 +37,27 @@ class SendMessagesThread(QButtonThread):
     def try_send_messages(self):
         hwnd = self.get_selected_window()
         if not hwnd:
-            self.log.emit(f'\nNo hwnd selected to test background send: {hwnd}')
+            self.log.emit(f'\nNo hwnd selected')
             return
         else:
-            self.log.emit(f'\nTrying to send to background hwnd: {hwnd}')
+            self.log.emit(f'\nTrying to send to hwnd: {hwnd}')
 
         # key_override_str = self.ui.key_entry.text()
         # key_hex = int(key_override_str, 16) if key_override_str else None
+        for elem in self.ui_cg.children():
+            if not isinstance(elem, CommandWidget):
+                continue
+            cw: CommandWidget = elem
 
-        if self.ui.send_down_command.enabled_check.isChecked():
-            data = self.ui.send_down_command.enum_param_dropdown.currentData(Qt.ItemDataRole.UserRole)
-            win32api.SendMessage(hwnd, win32con.WM_KEYDOWN, data, 0)
-            self.log.emit(f"SendMessage WM_KEYDOWN {data}")
-            self.msleep(200)
+            if not cw.enabled_check.isChecked():
+                continue
 
-        if self.ui.py_keybd_command.enabled_check.isChecked():
-            data = self.ui.py_keybd_command.enum_param_dropdown.currentData(Qt.ItemDataRole.UserRole)
-            win32api.keybd_event(data, 0, 0, 0)
-            self.log.emit(f"keybd_event (down?) {data}")
-            self.msleep(200)
+            str_arg = cw.str_param_edit.text() if cw.str_param else None
+            enum_arg = cw.enum_param_dropdown.currentData() if cw.enum_param else None
+            args = UiArgs(enum_arg, str_arg)
 
-        if self.ui.post_down_command.enabled_check.isChecked():
-            code = int(self.ui.post_down_command.int_param_edit.text())
-            win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, code, 0)
-            self.log.emit(f"PostMessage WM_KEYDOWN {code}")
-            self.msleep(200)
-
-        if self.ui.post_char_command.enabled_check.isChecked():
-            code = int(self.ui.post_char_command.int_param_edit.text())
-            win32api.PostMessage(hwnd, win32con.WM_CHAR, code, 0)
-            self.log.emit(f"PostMessage WM_CHAR {code}")
-            self.msleep(200)
-
-        if self.ui.send_char_command.enabled_check.isChecked():
-            code = int(self.ui.send_char_command.int_param_edit.text())
-            win32api.SendMessage(hwnd, win32con.WM_CHAR, code, 0)
-            self.log.emit(f"SendMessage WM_CHAR {code}")
-            self.msleep(200)
-
-        if self.ui.post_up_command.enabled_check.isChecked():
-            code = int(self.ui.post_up_command.int_param_edit.text())
-            win32api.PostMessage(hwnd, win32con.WM_KEYUP, code, 0)
-            self.log.emit(f"PostMessage WM_KEYUP {code}")
-            self.msleep(200)
-
-        if self.ui.py_keybd_up_command.enabled_check.isChecked():
-            data = self.ui.py_keybd_up_command.enum_param_dropdown.currentData(Qt.ItemDataRole.UserRole)
-            win32api.keybd_event(data, 0, win32con.KEYEVENTF_KEYUP, 0)
-            self.log.emit(f"keybd_event (focused only?) KEYEVENTF_KEYUP {data}")
-            self.msleep(200)
-
-        if self.ui.send_up_command.enabled_check.isChecked():
-            data = self.ui.send_up_command.enum_param_dropdown.currentData(Qt.ItemDataRole.UserRole)
-            win32api.SendMessage(hwnd, win32con.WM_KEYUP, data, 0)
-            self.log.emit(f"SendMessage WM_KEYUP {data}")
+            run_test_message(hwnd, cw.cmd, args)
+            self.log.emit(f"{cw.cmd} {args}")
             self.msleep(200)
 
     @override

@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from win32con import *
 from win32api import *
 
-from helpers.winapi.windows import hwnd_unsafe_op
+from src.helpers.winapi.windows import hwnd_unsafe_op
 
 
 def press_key(hwnd, key_code, only_down, post_delay_sec=0.1):
