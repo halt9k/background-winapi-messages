@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
-    QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout, QFrame
-
+    QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout, QFrame, \
+    QAbstractScrollArea
 
 # TODO use patterns Luke
 from src.messages import EnumArg
@@ -25,6 +25,7 @@ class CommandWidget(QWidget):
         if str_param:
             self.str_param_edit = QLineEdit(self)
             self.str_param_edit.setText(str_param)
+            self.str_param_edit.setMaximumSize(self.str_param_edit.minimumSizeHint())
             self.layout.addWidget(self.str_param_edit)
 
         if enum_param:
@@ -38,7 +39,11 @@ class CommandWidget(QWidget):
             if cur_index:
                 self.enum_param_dropdown.setCurrentIndex(cur_index)
 
+            self.enum_param_dropdown.setMinimumContentsLength(5)
+            self.enum_param_dropdown.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            self.enum_param_dropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
             self.layout.addWidget(self.enum_param_dropdown)
+            self.layout.setStretchFactor(self.enum_param_dropdown, 2)
 
 
 class CommandGroup(QGroupBox):
@@ -96,7 +101,6 @@ class CentralWidget(QWidget):
 
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
-        self.log_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         # self.log_text.setMinimumHeight(200)
 
         self.main_grid = QGridLayout(self)
