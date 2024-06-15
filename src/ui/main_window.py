@@ -11,11 +11,11 @@ class CommandWidget(QWidget):
     def __init__(self, parent, name, cmd, enabled=True, str_param=None, enum_param: EnumArg = None):
         super().__init__(parent)
         self.layout = QHBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.enabled_check = QCheckBox(name, self)
         self.enabled_check.setChecked(enabled)
-        self.enabled_check.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+
         self.layout.addWidget(self.enabled_check)
 
         self.cmd = cmd
@@ -25,7 +25,6 @@ class CommandWidget(QWidget):
         if str_param:
             self.str_param_edit = QLineEdit(self)
             self.str_param_edit.setText(str_param)
-            self.str_param_edit.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
             self.layout.addWidget(self.str_param_edit)
 
         if enum_param:
@@ -39,8 +38,6 @@ class CommandWidget(QWidget):
             if cur_index:
                 self.enum_param_dropdown.setCurrentIndex(cur_index)
 
-            # TODO why sizes
-            self.enum_param_dropdown.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
             self.layout.addWidget(self.enum_param_dropdown)
 
 
@@ -60,12 +57,13 @@ class CommandGroup(QGroupBox):
                     str_param = arg
                 if type(arg) is EnumArg:
                     enum_param = arg
-
             cmd_widgets += [CommandWidget(self, name=name, cmd=msg[0], str_param=str_param, enum_param=enum_param)]
 
         self.command_layout = QVBoxLayout(self)
         for w in cmd_widgets:
+
             self.command_layout.addWidget(w)
+
         self.command_layout.addWidget(self.send_messages_button)
 
 
