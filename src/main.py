@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 # Qt intellisense pip install PySide6-stubs
 
 import helpers.os_helpers  # noqa: F401
-from src.helpers.qt import QListWidgetItemEx, QButtonThread, switch_window_flag
+from src.helpers.qt import QListWidgetItemEx, QButtonThread, switch_window_flag, find_by_item_data
 from src.helpers.winapi.hotkey_events import virtual_code
 from src.helpers.winapi.other import MouseTracker
 from src.helpers.winapi.processes import get_process_windows, filter_process_windows
@@ -76,12 +76,15 @@ class App(QApplication):
 
     @Slot(int)
     def on_pick_hwnd(self, hwnd) -> bool:
-        items = self.ui_wg.window_listbox.findItems(str(hwnd), Qt.MatchFlag.MatchContains)
-        if items:
-            self.ui_wg.window_listbox.setCurrentItem(items[0])
-            return False
+        found = find_by_item_data(self.ui_wg.window_listbox, hwnd)
+        if len(found) > 2:
+            assert False
+        elif len(found) == 1:
+            self.ui_wg.window_listbox.setCurrentItem(found[0])
+            return True
         else:
             self.on_log(f'Item not found, hwnd {hwnd}')
+            return False
 
     def on_peek_windows_under_cursor(self):
         self.update_hwnd_list()

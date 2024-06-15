@@ -1,7 +1,7 @@
 import contextlib
 from PySide6.QtCore import Qt, QThread, Signal, Slot
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QWidget, QListWidgetItem, QAbstractButton
+from PySide6.QtWidgets import QWidget, QListWidgetItem, QAbstractButton, QListWidget
 import pydevd
 
 from src.helpers.virtual_methods import virutalmethod
@@ -36,6 +36,12 @@ class QListWidgetItemEx(QListWidgetItem):
             self.setFont(font)
         if font_red:
             self.setForeground(QColor("red"))
+
+
+def find_by_item_data(lw: QListWidget, data):
+    items = [lw.item(x) for x in range(lw.count())]
+    found = [i for i in items if i.data(Qt.ItemDataRole.UserRole) == data]
+    return found
 
 
 class QContextedThread(QThread):
