@@ -79,7 +79,7 @@ class WindowGroup(QGroupBox):
         # self.window_group.setFrameStyle(QFrame.StyledPanel)
         self.window_listbox = QListWidget(self)
         self.window_listbox.itemSelectionChanged.connect(on_window_select)
-        self.window_listbox.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.window_listbox.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.pick_windows_button = QPushButton("Pick under cursor...", self)
         self.pick_windows_button.clicked.connect(on_peek_window_under_cursor)
         self.refresh_windows_button = QPushButton("Refresh", self)

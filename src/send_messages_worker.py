@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtWidgets import QWidget
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
-from src.helpers.qt import switch_window_flag, QButtonThread
+from src.helpers.qt import QButtonThread, get_selected_data
 from src.helpers.virtual_methods import override
 from src.helpers.winapi import mouse_events
 from src.helpers.winapi.hotkey_events import virtual_code
@@ -22,25 +22,13 @@ class SendMessagesThread(QButtonThread):
         self.ui_cg = ui_cg
         self.ui_wg = ui_wg
 
-    def get_selected_window(self):
-        selected_items = self.ui_wg.window_listbox.selectedItems()
-
-        count = len(selected_items)
-        if count == 0:
-            return None
-        elif count == 1:
-            item = selected_items[0]
-            return item.data(Qt.ItemDataRole.UserRole)
-        else:
-            assert False
-
     def try_send_messages(self):
-        hwnd = self.get_selected_window()
-        if not hwnd:
-            self.log.emit(f'\nNo hwnd selected')
+        hwnds = get_selected_data(self.ui_wg.window_listbox)
+        if len(hwnds) < 1:
+            self.log.emit(f'\nNo hwnds selected')
             return
         else:
-            self.log.emit(f'\nTrying to send to hwnd: {hwnd}')
+            self.log.emit(f'\nTrying to send to hwnds: {hwnds}')
 
         # key_override_str = self.ui.key_entry.text()
         # key_hex = int(key_override_str, 16) if key_override_str else None
@@ -55,10 +43,10 @@ class SendMessagesThread(QButtonThread):
             str_arg = cw.str_param_edit.text() if cw.str_param else None
             enum_arg = cw.enum_param_dropdown.currentData() if cw.enum_param else None
             args = UiArgs(enum_arg, str_arg)
-
-            run_test_message(hwnd, cw.cmd, args)
-            self.log.emit(f"{cw.cmd} {args}")
-            self.msleep(200)
+            for hwnd in hwnds:
+                run_test_message(hwnd, cw.cmd, args)
+                self.log.emit(f"{cw.cmd} {args}")
+                self.msleep(200)
 
     @override
     def run(self):
@@ -68,7 +56,7 @@ class SendMessagesThread(QButtonThread):
 
         def on_err(e: Exception):
             self.log.emit('Safe_catch: ' + str(e))
-        with context_switch(catch_exceptions(on_err), False):
+        with context_switch(catch_exceptions(on_err), True):
             for _ in range(0, 10):
                 self.try_send_messages()
                 self.msleep(1000)

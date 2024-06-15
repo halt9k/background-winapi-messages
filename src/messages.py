@@ -10,7 +10,6 @@ from src.helpers.python_extensions import get_named_consts
 import src.helpers.winapi.mouse_events as mouse_events
 from src.helpers.winapi.hotkey_events import virtual_code
 
-
 common_vks = [win32con.VK_LSHIFT, win32con.VK_LCONTROL, win32con.VK_LMENU, win32con.VK_RETURN, win32con.VK_TAB]
 vk_args = get_named_consts(win32con, 'VK_*', int, common_vks)
 
@@ -29,8 +28,10 @@ class EnumArg:
 
 
 message_presets = ((mouse_events.send_click,),
-                   (SendMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'a'),
-                   (SendMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'a'),
+                   (keybd_event, 'VK_LCONTROL', EnumArg(keyevent_args, KEYEVENTF_KEYDOWN)),
+                   (PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'a'),
+                   (PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'a'),
+                   (keybd_event, 'VK_LCONTROL', EnumArg(keyevent_args, win32con.KEYEVENTF_KEYUP)),
                    (SendMessage, EnumArg(wm_args, win32con.WM_CHAR), 'b'),
                    (PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'c'),
                    (PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'c'),
@@ -75,7 +76,7 @@ def run_test_message(hwnd, cmd, ui_args: UiArgs):
         SendMessage(hwnd, ui_args.enum_arg, ui_args.key_code(), 0)
 
     elif cmd == PostMessage:
-        PostMessage(hwnd,  ui_args.enum_arg, ui_args.key_code(), 0)
+        PostMessage(hwnd, ui_args.enum_arg, ui_args.key_code(), 0)
 
     elif cmd == keybd_event:
         keybd_event(ui_args.key_code(), 0, ui_args.enum_arg, 0)

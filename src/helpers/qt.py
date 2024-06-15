@@ -44,6 +44,11 @@ def find_by_item_data(lw: QListWidget, data):
     return found
 
 
+def get_selected_data(lw: QListWidget):
+    selected_items = lw.selectedItems()
+    return [item.data(Qt.ItemDataRole.UserRole) for item in selected_items]
+
+
 class QContextedThread(QThread):
     # Some contexts which wrap a thread must be executed
     # before thread start and after thread finish

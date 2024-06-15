@@ -76,7 +76,6 @@ def filter_process_windows(data: List[WindowInfo],
 def get_process_windows() -> List[WindowInfo]:
     data, nested_data = EnumArgs([], None), EnumArgs([], None)
     EnumWindows(on_enum_window, data)
-    data.wnds.sort(key=lambda wnd: wnd.pid)
     for wnd in data.wnds:
         nested_data.known_root_parent = wnd.hwnd
         EnumChildWindows(wnd.hwnd, on_enum_window, nested_data)
