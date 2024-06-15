@@ -26,7 +26,7 @@ def get_unprotected_module_path(pid):
 @dataclass(init=True)
 class WindowInfo:
     hwnd: int
-    parent_hwnd: int
+    root_parent_hwnd: int  # root parent can be nested
     pid: int
     module_path: str
     style: int
@@ -35,20 +35,20 @@ class WindowInfo:
 
 
 @dataclass(init=True)
-class Data:
+class EnumArgs:
     wnds: List[WindowInfo]
-    known_parent_hwnd: Optional[int]
+    known_root_parent: Optional[int]
 
 
-def on_enum_window(hwnd, data: Data):
-    parent = data.known_parent_hwnd
+def on_enum_window(hwnd, args: EnumArgs):
+    root_parent = args.known_root_parent
     pid = GetWindowThreadProcessId(hwnd)[1]
     module_path = get_unprotected_module_path(pid) if pid else None
     title = GetWindowText(hwnd)
     style = GetWindowLong(hwnd, GWL_STYLE)
     visible = bool(WS_VISIBLE & style)
 
-    data.wnds += [WindowInfo(hwnd, parent, pid, module_path, style, visible, title)]
+    args.wnds += [WindowInfo(hwnd, root_parent, pid, module_path, style, visible, title)]
     return True
 
 
@@ -74,10 +74,13 @@ def filter_process_windows(data: List[WindowInfo],
 
 
 def get_process_windows() -> List[WindowInfo]:
-    data = Data([], None)
+    data, nested_data = EnumArgs([], None), EnumArgs([], None)
     EnumWindows(on_enum_window, data)
-    for wnd in data.wnds:
-        data.known_parent_hwnd = wnd.hwnd
-        EnumChildWindows(wnd.hwnd, on_enum_window, data)
     data.wnds.sort(key=lambda wnd: wnd.pid)
-    return data.wnds
+    for wnd in data.wnds:
+        nested_data.known_root_parent = wnd.hwnd
+        EnumChildWindows(wnd.hwnd, on_enum_window, nested_data)
+    combined = data.wnds + nested_data.wnds
+    # sort can be done with priority on wnd.pid or wnd.hwnd
+    combined.sort(key=lambda wnd: (wnd.pid, wnd.hwnd if not wnd.root_parent_hwnd else wnd.root_parent_hwnd))
+    return combined

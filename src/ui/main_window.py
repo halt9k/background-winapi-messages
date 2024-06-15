@@ -108,6 +108,11 @@ class CentralWidget(QWidget):
         self.main_grid.addWidget(self.command_group, 0, 1)
         self.main_grid.addWidget(self.log_text, 1, 0, 1, 2, )
 
+        self.main_grid.setRowStretch(0, 2)
+        self.main_grid.setRowStretch(1, 1)
+        self.main_grid.setColumnStretch(0, 3)
+        self.main_grid.setColumnStretch(1, 2)
+
         # self.command_group.setFrameShape(QFrame.StyledPanel)
         '''
         self.command_info = QFrame(self.command_group)

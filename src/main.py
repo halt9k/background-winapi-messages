@@ -54,7 +54,10 @@ class App(QApplication):
         self.ui_wg.window_listbox.clear()
         for info in wnds:
             module = Path(info.module_path).name if info.module_path else "-"
-            desc = f"{module}  parent: {info.parent_hwnd}  pid: {info.pid}   hwnd: {info.hwnd}   visible: {info.visible}   title: {info.title}"
+            desc = f"{module}  parent: {info.root_parent_hwnd}  pid: {info.pid}" \
+                   f"   hwnd: {info.hwnd}   visible: {info.visible}   title: {info.title}"
+            if info.root_parent_hwnd:
+                desc = '        ' + desc
             item = QListWidgetItemEx(key=info.hwnd,
                                      text=desc,
                                      font_bold=bold_if_visible and info.visible,
