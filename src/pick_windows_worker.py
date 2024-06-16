@@ -4,7 +4,8 @@ import win32gui
 from PySide6.QtCore import QThread, Signal, Slot, QObject
 
 from src.helpers.python_extensions import catch_exceptions, ChangeTracker, context_switch
-from src.helpers.qt import log, QWorker
+from src.helpers.qt import log
+from src.helpers.qt_async_button import QWorker
 from src.helpers.virtual_methods import override
 from src.helpers.winapi.other import MouseTracker, get_window_info_under_cursor
 

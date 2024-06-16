@@ -13,37 +13,37 @@ from src.helpers.winapi.processes import get_process_windows, filter_process_win
 import src.messages
 from src.pick_windows_worker import PickWindowsWorker
 from src.send_messages_worker import SendMessagesWorker
-from src.ui.main_window import MainWindow
+from src.ui.main_window import MainWindowFrame
 
 
-class App(QApplication):
+# TODO 1. Never call QThread::sleep()
+# TODO # 3. Never do GUI operations off the main thread
+# TODO # 6. Act as if QObject is non-reentrant
+
+
+class MainWindow(MainWindowFrame):
     def __init__(self):
-        super().__init__(sys.argv)
+        super().__init__()
+        self.ui_cw = self.central_widget
+        self.ui_cg = self.central_widget.command_group
+        self.ui_wg = self.central_widget.window_group
 
-        self.ui = MainWindow()
-        self.ui_cw = self.ui.central_widget
-        self.ui_cg = self.ui.central_widget.command_group
-        self.ui_wg = self.ui.central_widget.window_group
-
-        self.last_caption = ""
-
-        # TODO skipped
-        # contexts=[switch_window_flag(self.ui, Qt.WindowStaysOnTopHint, True)]
         logger.log.connect(self.on_log)
 
         self.ui_wg.window_listbox.itemSelectionChanged.connect(self.on_window_select)
         self.ui_wg.refresh_windows_button.clicked.connect(self.on_refresh)
 
+        def always_on_top():
+            return [switch_window_flag(self, Qt.WindowStaysOnTopHint, True)]
+
         self.pick_windows_worker = PickWindowsWorker()
         self.pick_windows_worker.pick_hwnd.connect(self.on_pick_hwnd)
-        self.ui_wg.pick_windows_button.clicked.connect(self.on_pick_windows)
-        self.ui_wg.pick_windows_button.attach_worker(self.pick_windows_worker)
-
+        self.ui_wg.pick_windows_button.attach_worker(self.pick_windows_worker,  on_get_sync_contexts=always_on_top,
+                                                     on_before_worker=self.on_pick_windows_start)
         self.send_messages_worker = SendMessagesWorker(ui_cg=self.ui_cg, ui_wg=self.ui_wg)
-        self.ui_cg.send_messages_button.attach_worker(self.send_messages_worker)
+        self.ui_cg.send_messages_button.attach_worker(self.send_messages_worker, on_get_sync_contexts=always_on_top)
 
         self.update_hwnd_list(hightlight_new=False)
-        self.ui.show()
 
     @Slot(object)
     def on_ui_lambda(self, on_lambda):
@@ -99,9 +99,16 @@ class App(QApplication):
             log(f'Item not found, hwnd {hwnd}')
             return False
 
-    @Slot()
-    def on_pick_windows(self):
+    def on_pick_windows_start(self):
         self.update_hwnd_list()
+
+
+class App(QApplication):
+    def __init__(self):
+        super().__init__(sys.argv)
+
+        self.ui = MainWindow()
+        self.ui.show()
 
 
 if __name__ == "__main__":

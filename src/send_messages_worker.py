@@ -4,7 +4,8 @@ from PySide6.QtCore import Qt, Signal, QThread, Slot, QObject
 from PySide6.QtWidgets import QWidget
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
-from src.helpers.qt import QAsyncButton, get_selected_data, log, QWorker
+from src.helpers.qt import get_selected_data, log
+from src.helpers.qt_async_button import QAsyncButton, QWorker
 from src.helpers.virtual_methods import override
 from src.helpers.winapi import mouse_events
 from src.helpers.winapi.hotkey_events import virtual_code

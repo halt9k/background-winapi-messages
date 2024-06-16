@@ -1,14 +1,13 @@
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
-    QPushButton, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout, QFrame, \
-    QAbstractScrollArea
+    QPushButton, QVBoxLayout, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout
 
 # TODO use patterns Luke
-from src.helpers.qt import QAsyncButton
+from src.helpers.qt_async_button import QAsyncButton
 from src.messages import EnumArg, message_presets
 
 
 class CommandWidget(QWidget):
+    """ UI entry with checkbox is created for each command like SendMessage """
     def __init__(self, parent, name, cmd, enabled=True, str_param=None, enum_param: EnumArg = None):
         super().__init__(parent)
         self.layout = QHBoxLayout(self)
@@ -52,6 +51,7 @@ class CommandGroup(QGroupBox):
         super().__init__(text, parent)
         self.send_messages_button = QAsyncButton(text="Start Sending...", parent=self)
 
+        # TODO improve
         cmd_widgets = []
         for msg in message_presets:
             name = msg[0].__name__
@@ -127,7 +127,7 @@ class CentralWidget(QWidget):
         '''
 
 
-class MainWindow(QMainWindow):
+class MainWindowFrame(QMainWindow):
     def __init__(self):
         super().__init__()
 
