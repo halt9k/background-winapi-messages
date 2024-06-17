@@ -1,10 +1,10 @@
 import win32api
 import win32con
-from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtCore import Qt, Signal, QThread, Slot, QObject
 from PySide6.QtWidgets import QWidget
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
-from src.helpers.qt import QButtonThread, get_selected_data
+from src.helpers.qt import QAsyncButton, get_selected_data, log, QWorker
 from src.helpers.virtual_methods import override
 from src.helpers.winapi import mouse_events
 from src.helpers.winapi.hotkey_events import virtual_code
@@ -12,12 +12,12 @@ from src.messages import run_test_message, UiArgs
 from src.ui.main_window import CommandWidget, CommandGroup, WindowGroup
 
 
-class SendMessagesThread(QButtonThread):
+class SendMessagesWorker(QWorker):
     # QTimer is better option for this specific task,
     # but thread template may be handy for future extensions,
     # since this is also sandbox for Qt hwnd experiments
 
-    def __init__(self, ui_cg: CommandGroup, ui_wg: WindowGroup, *args, **kwargs):
+    def __init__(self,  ui_cg: CommandGroup, ui_wg: WindowGroup, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ui_cg = ui_cg
         self.ui_wg = ui_wg
@@ -25,10 +25,10 @@ class SendMessagesThread(QButtonThread):
     def try_send_messages(self):
         hwnds = get_selected_data(self.ui_wg.window_listbox)
         if len(hwnds) < 1:
-            self.log.emit(f'\nNo hwnds selected')
+            log(f'\nNo hwnds selected')
             return
         else:
-            self.log.emit(f'\nTrying to send to hwnds: {hwnds}')
+            log(f'\nTrying to send to hwnds: {hwnds}')
 
         # key_override_str = self.ui.key_entry.text()
         # key_hex = int(key_override_str, 16) if key_override_str else None
@@ -45,19 +45,21 @@ class SendMessagesThread(QButtonThread):
             args = UiArgs(enum_arg, str_arg)
             for hwnd in hwnds:
                 run_test_message(hwnd, cw.cmd, args)
-                self.log.emit(f"{cw.cmd} {args}")
-                self.msleep(200)
+                log(f"{cw.cmd} {args}")
+                # TODO QTimer
+                sleep(.2)
 
+    @Slot()
     @override
-    def run(self):
-        super().run()
-        self.log.emit(f"Next 10s sending messages to background selected window or \n"
+    def on_run(self):
+        log(f"Next 10s sending messages to background selected window or \n"
                       f"try to switch window to test foreground send")
 
         def on_err(e: Exception):
-            self.log.emit('Safe_catch: ' + str(e))
+            log('Safe_catch: ' + str(e))
         with context_switch(catch_exceptions(on_err), True):
             for _ in range(0, 10):
                 self.try_send_messages()
-                self.msleep(1000)
-        self.log.emit(f"Send over")
+                # TODO QTimer
+                sleep(1)
+        log(f"Send over")

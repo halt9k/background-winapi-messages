@@ -4,7 +4,8 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizeP
     QAbstractScrollArea
 
 # TODO use patterns Luke
-from src.messages import EnumArg
+from src.helpers.qt import QAsyncButton
+from src.messages import EnumArg, message_presets
 
 
 class CommandWidget(QWidget):
@@ -47,13 +48,12 @@ class CommandWidget(QWidget):
 
 
 class CommandGroup(QGroupBox):
-    def __init__(self, text, parent, custom_messages, on_start_sending):
+    def __init__(self, text, parent):
         super().__init__(text, parent)
-        self.send_messages_button = QPushButton("Start Sending...", self)
-        self.send_messages_button.clicked.connect(on_start_sending)
+        self.send_messages_button = QAsyncButton(text="Start Sending...", parent=self)
 
         cmd_widgets = []
-        for msg in custom_messages:
+        for msg in message_presets:
             name = msg[0].__name__
             enum_param = None
             str_param = None
@@ -73,17 +73,15 @@ class CommandGroup(QGroupBox):
 
 
 class WindowGroup(QGroupBox):
-    def __init__(self, text, parent, on_window_select, on_peek_window_under_cursor, on_refresh):
+    def __init__(self, text, parent):
         super().__init__(text, parent)
 
         # self.window_group.setFrameStyle(QFrame.StyledPanel)
         self.window_listbox = QListWidget(self)
-        self.window_listbox.itemSelectionChanged.connect(on_window_select)
+
         self.window_listbox.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.pick_windows_button = QPushButton("Pick under cursor...", self)
-        self.pick_windows_button.clicked.connect(on_peek_window_under_cursor)
+        self.pick_windows_button = QAsyncButton(text="Pick under cursor...", parent=self)
         self.refresh_windows_button = QPushButton("Refresh", self)
-        self.refresh_windows_button.clicked.connect(on_refresh)
 
         self.window_layout = QVBoxLayout(self)
         self.window_layout.addWidget(self.window_listbox)
@@ -92,12 +90,10 @@ class WindowGroup(QGroupBox):
 
 
 class CentralWidget(QWidget):
-    def __init__(self, parent, on_peek_window_under_cursor, on_refresh, on_start_sending, on_window_select,
-                 on_guess_char, custom_messages):
+    def __init__(self, parent):
         super().__init__(parent)
-        self.window_group = WindowGroup("Select window", self,
-                                        on_window_select, on_peek_window_under_cursor, on_refresh)
-        self.command_group = CommandGroup("Select messages", self, custom_messages, on_start_sending)
+        self.window_group = WindowGroup("Select window", self)
+        self.command_group = CommandGroup("Select messages", self)
 
         self.log_text = QTextEdit(self)
         self.log_text.setReadOnly(True)
@@ -132,7 +128,7 @@ class CentralWidget(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, *args):
+    def __init__(self):
         super().__init__()
 
         self.setWindowTitle("WinApi message test")
@@ -140,7 +136,7 @@ class MainWindow(QMainWindow):
             self.setObjectName(u"QMainWindow")
         self.resize(800, 600)
 
-        self.central_widget = CentralWidget(self, *args)
+        self.central_widget = CentralWidget(self)
         self.setCentralWidget(self.central_widget)
 
         # QMetaObject.connectSlotsByName(self)

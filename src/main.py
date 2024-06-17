@@ -6,31 +6,44 @@ from PySide6.QtWidgets import QApplication, QWidget
 # Qt intellisense pip install PySide6-stubs
 
 import helpers.os_helpers  # noqa: F401
-from src.helpers.qt import QListWidgetItemEx, QButtonThread, switch_window_flag, find_by_item_data
+from src.helpers.qt import QListWidgetItemEx, switch_window_flag, find_by_item_data, log, logger
 from src.helpers.winapi.hotkey_events import virtual_code
 from src.helpers.winapi.other import MouseTracker
 from src.helpers.winapi.processes import get_process_windows, filter_process_windows
 import src.messages
-from src.pick_windows_worker import PickWindowsThread
-from src.send_messages_worker import SendMessagesThread
+from src.pick_windows_worker import PickWindowsWorker
+from src.send_messages_worker import SendMessagesWorker
 from src.ui.main_window import MainWindow
 
 
 class App(QApplication):
     def __init__(self):
         super().__init__(sys.argv)
-        self.ui = MainWindow(self.on_peek_windows_under_cursor, self.on_refresh, self.on_start_sending,
-                             self.on_window_select, self.on_guess_char, src.messages.message_presets)
+
+        self.ui = MainWindow()
         self.ui_cw = self.ui.central_widget
         self.ui_cg = self.ui.central_widget.command_group
         self.ui_wg = self.ui.central_widget.window_group
 
-        self.ui.show()
         self.last_caption = ""
-        self.pick_windows_thread = None
-        self.send_messages_thread = None
+
+        # TODO skipped
+        # contexts=[switch_window_flag(self.ui, Qt.WindowStaysOnTopHint, True)]
+        logger.log.connect(self.on_log)
+
+        self.ui_wg.window_listbox.itemSelectionChanged.connect(self.on_window_select)
+        self.ui_wg.refresh_windows_button.clicked.connect(self.on_refresh)
+
+        self.pick_windows_worker = PickWindowsWorker()
+        self.pick_windows_worker.pick_hwnd.connect(self.on_pick_hwnd)
+        self.ui_wg.pick_windows_button.clicked.connect(self.on_pick_windows)
+        self.ui_wg.pick_windows_button.attach_worker(self.pick_windows_worker)
+
+        self.send_messages_worker = SendMessagesWorker(ui_cg=self.ui_cg, ui_wg=self.ui_wg)
+        self.ui_cg.send_messages_button.attach_worker(self.send_messages_worker)
 
         self.update_hwnd_list(hightlight_new=False)
+        self.ui.show()
 
     @Slot(object)
     def on_ui_lambda(self, on_lambda):
@@ -64,7 +77,7 @@ class App(QApplication):
                                      font_red=hightlight_new and info.hwnd not in prev_hwnds)
             self.ui_wg.window_listbox.addItem(item)
         count_diff = len(wnds) - prev_len
-        self.on_log(f'List of windows updated, changed: {count_diff}.')
+        log(f'List of windows updated, changed: {count_diff}.')
 
     def on_window_select(self):
         pass
@@ -83,23 +96,12 @@ class App(QApplication):
             self.ui_wg.window_listbox.setCurrentItem(found[0])
             return True
         else:
-            self.on_log(f'Item not found, hwnd {hwnd}')
+            log(f'Item not found, hwnd {hwnd}')
             return False
 
-    def on_peek_windows_under_cursor(self):
+    @Slot()
+    def on_pick_windows(self):
         self.update_hwnd_list()
-        self.pick_windows_thread = PickWindowsThread(btn=self.ui_wg.pick_windows_button,
-                                                     contexts=[switch_window_flag(self.ui, Qt.WindowStaysOnTopHint, True)],
-                                                     on_pick_hwnd=self.on_pick_hwnd,
-                                                     on_log=self.on_log)
-        self.pick_windows_thread.start()
-
-    def on_start_sending(self):
-        self.send_messages_thread = SendMessagesThread(btn=self.ui_cw.command_group.send_messages_button,
-                                                       ui_cg=self.ui_cg, ui_wg=self.ui_wg,
-                                                       contexts=[switch_window_flag(self.ui, Qt.WindowStaysOnTopHint, True)],
-                                                       on_log=self.on_log)
-        self.send_messages_thread.start()
 
 
 if __name__ == "__main__":

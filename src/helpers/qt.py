@@ -1,11 +1,22 @@
 import contextlib
-from PySide6.QtCore import Qt, QThread, Signal, Slot
+from abc import abstractmethod
+from typing import Callable
+
+from PySide6.QtCore import Qt, QThread, Signal, Slot, QObject
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QWidget, QListWidgetItem, QAbstractButton, QListWidget
+from PySide6.QtWidgets import QWidget, QListWidgetItem, QAbstractButton, QListWidget, QPushButton
 import pydevd
 
-from src.helpers.virtual_methods import virutalmethod
+from src.helpers.virtual_methods import virutalmethod, override
 from src.helpers.python_extensions import context_switch
+
+
+class Logger(QObject):
+    log = Signal(str)
+
+
+logger = Logger()
+log = logger.log.emit
 
 
 @contextlib.contextmanager
@@ -49,45 +60,79 @@ def get_selected_data(lw: QListWidget):
     return [item.data(Qt.ItemDataRole.UserRole) for item in selected_items]
 
 
-class QContextedThread(QThread):
-    # Some contexts which wrap a thread must be executed
-    # before thread start and after thread finish
-    # wrapping this in context managers  is desired, but they won't wait until finish
-    # declaring separate slots is solid, but too code cluttering
-    # using manual contexts like here is clean, but yet skips error handling
-    # TODO is moveToThread approach any different in context of this problem?
-    log = Signal(str)
+class QWorker(QObject):
+    finished = Signal()
 
-    def __init__(self, on_log: Slot(str), contexts: [], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.log.connect(on_log)
-        self.contexts = contexts
-
-        self.enter_contexts()
-        self.finished.connect(self.exit_contexts)
-
-    def enter_contexts(self):
-        for c in self.contexts:
-            c.__enter__()
-
-    @virutalmethod
-    def run(self):
-        # without this debug won't hit breakpoints in the threads
-        pydevd.settrace(suspend=False)
+    @abstractmethod
+    def on_run(self):
+        raise NotImplementedError
 
     @Slot()
+    def run(self):
+        pydevd.settrace(suspend=False)
+        try:
+            self.on_run()
+        finally:
+            self.finished.emit()
+
+
+class QAsyncButton(QPushButton):
+    def __init__(self, contexts=None,
+                 on_before_thread: Callable = None,
+                 on_after_thread: Callable = None,
+                 *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.contexts = []
+        # self.contexts = contexts
+        self.on_custom_before_thread = on_before_thread
+        self.on_custom_after_thread = on_after_thread
+
+        self.thread = QThread()
+        self.clicked.connect(self.on_clicked)
+        self.worker = None
+
+    def on_before_thread(self):
+        # TODO fixed?
+        # Some contexts which wrap a thread must be executed
+        # before thread start and after thread finish
+        # wrapping this in context managers  is desired, but they won't wait until finish
+        # declaring separate slots is solid, but too code cluttering
+        # using manual contexts like here is clean, but yet skips error handling
+
+        self.setEnabled(False)
+        self.enter_contexts()
+        if self.on_custom_before_thread:
+            self.on_custom_before_thread()
+
+    @Slot()
+    def on_after_thread(self):
+        if self.on_custom_after_thread:
+            self.on_custom_after_thread()
+        self.setEnabled(True)
+        self.exit_contexts()
+
+    @Slot()
+    def on_clicked(self) -> None:
+        # TODO contexts?
+        assert self.worker
+
+        self.on_before_thread()
+        self.thread.finished.connect(self.on_after_thread)
+
+        self.thread.start()
+
+    def attach_worker(self, worker: QWorker):
+        self.worker = worker
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+
     def exit_contexts(self):
         for c in reversed(self.contexts):
             # TODO propagate errors?
             c.__exit__(None, None, None)
 
-
-class QButtonThread(QContextedThread):
-    def __init__(self, btn: QAbstractButton, on_log: Slot(str), *args, **kwargs):
-        # Reminder: __init__ runs not yet in thread
-
-        super().__init__(on_log, *args, **kwargs)
-        btn.setEnabled(False)
-        self.finished.connect(lambda: btn.setEnabled(True))
-
-
+    def enter_contexts(self):
+        for c in self.contexts:
+            c.__enter__()
