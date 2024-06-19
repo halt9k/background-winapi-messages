@@ -1,7 +1,7 @@
 from time import sleep
 
 import win32gui
-from PySide6.QtCore import QThread, Signal, Slot, QObject
+from PySide6.QtCore import Signal, Slot
 
 from src.helpers.python_extensions import catch_exceptions, ChangeTracker, context_switch
 from src.helpers.qt import log

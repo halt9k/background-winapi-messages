@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QApplication, QWidget
 # Qt intellisense pip install PySide6-stubs
 
@@ -22,6 +23,8 @@ from src.ui.main_window import MainWindowFrame
 
 
 class MainWindow(MainWindowFrame):
+    close_event = Signal()
+
     def __init__(self):
         super().__init__()
         self.ui_cw = self.central_widget
@@ -101,6 +104,10 @@ class MainWindow(MainWindowFrame):
 
     def on_pick_windows_start(self):
         self.update_hwnd_list()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.close_event.emit()
+        event.accept()
 
 
 class App(QApplication):

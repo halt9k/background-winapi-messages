@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Callable
 
 import pydevd
-from PySide6.QtCore import QThread, Slot, QObject, Signal
+from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer
 from PySide6.QtWidgets import QPushButton, QApplication
 
 
@@ -23,6 +23,11 @@ class QWorker(QObject):
 
 
 class QAsyncButton(QPushButton):
+    """
+    This was intended as a button which spawns separate thread for experiments.
+    Remember not to interact directly with UI in spawned threads.
+    Even win32gui.GetWindowText(main_hwnd) can deadlock if called while thread termination is waited.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.contexts = []
@@ -32,15 +37,29 @@ class QAsyncButton(QPushButton):
         self.on_after_worker = None
 
         self.thread = QThread()
+        close_event = self.window().close_event
+        if close_event:
+            self.window().close_event.connect(self.on_close)
+        else:
+            print("QAsyncButton needs to know when MainWindow is closed to terminate thread if it works.\n"
+                  "Propagate a signal from QMainWindow.closeEvent() for this.")
+
         self.clicked.connect(self.on_clicked)
-        QApplication.instance().aboutToQuit.connect(self.on_close)
         self.worker = None
 
     @Slot()
     def on_close(self):
         if self.thread.isRunning():
             self.thread.quit()
-            self.thread.wait()
+            deadline = QDeadlineTimer(500)
+            self.thread.wait(deadline)
+            if deadline.hasExpired():
+                print("Warning: thread did not quit fluently and will be terminated.\n"
+                      "This is expected if WinApi calls on QMainWindow are used, which may deadlock wait().\n"
+                      "Proper and easier way is QTimer, but this example deliberately experimented with QAsyncButton.\n"
+                      "Another option is to use QApplication.aboutToExit() instead of QMainWindow.closeEvent(),\n"
+                      "but closeEvent() better couples lifetime of thread and button.")
+                self.thread.terminate()
 
     def on_before_thread(self):
         self.setEnabled(False)
