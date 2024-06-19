@@ -6,8 +6,12 @@ from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer
 from PySide6.QtWidgets import QPushButton
 
 
-class QWorker(QObject):
+class QReusableWorker(QObject):
     finished = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.original_thread = QThread.currentThread()
 
     @abstractmethod
     def on_run(self):
@@ -16,9 +20,14 @@ class QWorker(QObject):
     @Slot()
     def run(self):
         pydevd.settrace(suspend=False)
+
+        # Worker is not expected to manage own thread, but can ensure
+        assert self.original_thread != QThread.currentThread()
+
         try:
             self.on_run()
         finally:
+            self.moveToThread(self.original_thread)
             self.finished.emit()
 
 
@@ -85,7 +94,7 @@ class QAsyncButton(QPushButton):
 
         self.thread.start()
 
-    def attach_worker(self, worker: QWorker, on_get_sync_contexts=None,
+    def attach_worker(self, worker: QReusableWorker, on_get_sync_contexts=None,
                       on_before_worker: Callable = None,
                       on_after_worker: Callable = None):
         """

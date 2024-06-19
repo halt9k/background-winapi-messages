@@ -5,12 +5,12 @@ from PySide6.QtCore import Signal, Slot
 
 from src.helpers.python_extensions import catch_exceptions, ChangeTracker, context_switch
 from src.helpers.qt import log
-from src.helpers.qt_async_button import QWorker
+from src.helpers.qt_async_button import QReusableWorker
 from src.helpers.virtual_methods import override
 from src.helpers.winapi.other import MouseTracker, get_window_info_under_cursor
 
 
-class PickWindowsWorker(QWorker):
+class PickWindowsWorker(QReusableWorker):
     # QTimer is better option for this specific task,
     # but thread template may be handy for future extensions,
     # since this is also sandbox for Qt hwnd experiments

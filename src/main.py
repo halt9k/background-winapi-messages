@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+# Qt intellisense pip install PySide6-stubs
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QApplication
@@ -12,14 +13,6 @@ from src.helpers.winapi.processes import get_process_windows, filter_process_win
 from src.pick_windows_worker import PickWindowsWorker
 from src.send_messages_worker import SendMessagesWorker
 from src.ui.main_window import MainWindowFrame
-
-
-# Qt intellisense pip install PySide6-stubs
-
-
-# TODO 1. Never call QThread::sleep()
-# TODO # 3. Never do GUI operations off the main thread
-# TODO # 6. Act as if QObject is non-reentrant
 
 
 class MainWindow(MainWindowFrame):

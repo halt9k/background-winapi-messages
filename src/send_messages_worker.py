@@ -2,13 +2,13 @@ from PySide6.QtCore import Slot
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
 from src.helpers.qt import get_selected_data, log
-from src.helpers.qt_async_button import QWorker
+from src.helpers.qt_async_button import QReusableWorker
 from src.helpers.virtual_methods import override
 from src.messages import run_test_message, UiArgs
 from src.ui.main_window import CommandWidget, CommandGroup, WindowGroup
 
 
-class SendMessagesWorker(QWorker):
+class SendMessagesWorker(QReusableWorker):
     # QTimer is better option for this specific task,
     # but thread template may be handy for future extensions,
     # since this is also sandbox for Qt hwnd experiments
