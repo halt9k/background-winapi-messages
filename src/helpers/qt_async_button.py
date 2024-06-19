@@ -3,7 +3,7 @@ from typing import Callable
 
 import pydevd
 from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer
-from PySide6.QtWidgets import QPushButton, QApplication
+from PySide6.QtWidgets import QPushButton
 
 
 class QWorker(QObject):

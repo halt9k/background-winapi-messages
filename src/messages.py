@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-from enum import Enum
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 import win32con
 from win32api import SendMessage, PostMessage, keybd_event
 from win32gui import GetWindowRect, GetCursorPos
 
-from src.helpers.python_extensions import get_named_consts
 import src.helpers.winapi.mouse_events as mouse_events
+from src.helpers.python_extensions import get_named_consts
 from src.helpers.winapi.hotkey_events import virtual_code
 
 common_vks = [win32con.VK_LSHIFT, win32con.VK_LCONTROL, win32con.VK_LMENU, win32con.VK_RETURN, win32con.VK_TAB]

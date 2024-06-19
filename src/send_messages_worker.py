@@ -1,14 +1,9 @@
-import win32api
-import win32con
-from PySide6.QtCore import Qt, Signal, QThread, Slot, QObject
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Slot
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
 from src.helpers.qt import get_selected_data, log
-from src.helpers.qt_async_button import QAsyncButton, QWorker
+from src.helpers.qt_async_button import QWorker
 from src.helpers.virtual_methods import override
-from src.helpers.winapi import mouse_events
-from src.helpers.winapi.hotkey_events import virtual_code
 from src.messages import run_test_message, UiArgs
 from src.ui.main_window import CommandWidget, CommandGroup, WindowGroup
 

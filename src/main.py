@@ -3,18 +3,18 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QApplication, QWidget
-# Qt intellisense pip install PySide6-stubs
+from PySide6.QtWidgets import QApplication
 
 import helpers.os_helpers  # noqa: F401
 from src.helpers.qt import QListWidgetItemEx, switch_window_flag, find_by_item_data, log, logger
 from src.helpers.winapi.hotkey_events import virtual_code
-from src.helpers.winapi.other import MouseTracker
 from src.helpers.winapi.processes import get_process_windows, filter_process_windows
-import src.messages
 from src.pick_windows_worker import PickWindowsWorker
 from src.send_messages_worker import SendMessagesWorker
 from src.ui.main_window import MainWindowFrame
+
+
+# Qt intellisense pip install PySide6-stubs
 
 
 # TODO 1. Never call QThread::sleep()
