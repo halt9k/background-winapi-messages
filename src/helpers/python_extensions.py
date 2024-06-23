@@ -1,7 +1,7 @@
 import inspect
 import threading
 from contextlib import contextmanager, nullcontext
-from typing import Tuple, Any, Type, List
+from typing import Tuple, Any, Type, List, Callable
 import fnmatch
 
 
@@ -10,12 +10,12 @@ def context_switch(context, enabled):
 
 
 @contextmanager
-def catch_exceptions(func=None):
+def catch_exceptions(on_catch: Callable[[Exception], None] = None):
     try:
         yield
     except Exception as e:
-        if func:
-            func(e)
+        if on_catch:
+            on_catch(e)
 
 
 def run_in_thread(func, *args, **kwargs):

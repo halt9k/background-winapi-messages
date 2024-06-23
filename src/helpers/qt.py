@@ -1,6 +1,8 @@
 import contextlib
+from abc import abstractmethod
 
-from PySide6.QtCore import Qt, Signal, QObject
+import pydevd
+from PySide6.QtCore import Qt, Signal, QObject, QTimer, Slot, QTimerEvent
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QWidget, QListWidgetItem, QListWidget
 
@@ -55,4 +57,34 @@ def get_selected_data(lw: QListWidget):
     selected_items = lw.selectedItems()
     return [item.data(Qt.ItemDataRole.UserRole) for item in selected_items]
 
+
+class QDebuggedTimer(QTimer):
+    """ Warning: any slot connected to timeout signal won't be breakpointed """
+
+    def timerEvent(self, arg__1: QTimerEvent) -> None:
+        pydevd.settrace(suspend=False)
+        self.on_timeout()
+
+    @abstractmethod
+    def on_timeout(self):
+        raise NotImplementedError
+
+
+class QTimerEx(QDebuggedTimer):
+    def __init__(self, on_timeout, on_finished, repeats=3, interval_msec=100, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setInterval(interval_msec)
+        self.count = 0
+        self.target_count = repeats
+        self.on_timeout_user = on_timeout
+        self.on_finished = on_finished
+
+    @Slot()
+    def on_timeout(self):
+        if self.count >= self.target_count:
+            self.stop()
+            self.on_finished()
+            return
+        self.on_timeout_user()
+        self.count += 1
 

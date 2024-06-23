@@ -5,8 +5,39 @@ import pydevd
 from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer
 from PySide6.QtWidgets import QPushButton
 
+from src.helpers.qt import log
 
+
+class QWorker(QObject):
+    finished = Signal()
+
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def on_run(self):
+        raise NotImplementedError
+
+    @Slot()
+    def run(self):
+        pydevd.settrace(suspend=False)
+
+        try:
+            self.on_run()
+        except:
+            self.finished.emit()
+            raise
+
+
+'''
 class QReusableWorker(QObject):
+    """ 
+    A draft of reusable which is expected to have same lifetime with button, 
+    and moved into new thread before QReusableWorker.run() 
+    and back on QReusableWorker.finished()
+    no destructions, but extra thread spam. Unfinished draft. 
+    """
+     
     finished = Signal()
 
     def __init__(self):
@@ -20,15 +51,41 @@ class QReusableWorker(QObject):
     @Slot()
     def run(self):
         pydevd.settrace(suspend=False)
+        
 
-        # Worker is not expected to manage own thread, but can ensure
+        # Worker is not expected to branch own thread, but can ensure
         assert self.original_thread != QThread.currentThread()
 
         try:
             self.on_run()
-        finally:
-            self.moveToThread(self.original_thread)
+        except:
             self.finished.emit()
+            
+    def on_finished(self):
+        self.moveToThread(self.original_thread)
+'''
+
+
+def quit_or_terminate_qthread(thread: QThread):
+    assert thread != QThread.currentThread()
+
+    if not thread.isRunning():
+        return
+
+    thread.quit()
+    deadline = QDeadlineTimer(500)
+    thread.wait(deadline)
+
+    if thread.isRunning():
+        print("Warning: thread did not quit fluently and will be terminated.\n"
+              "This is expected, for example, if WinApi calls on QMainWindow may deadlock wait() during closeEvent().\n"
+              "Proper way is QTimer instead of sleep(), but it may overcomlicate some cases.\n"
+              "Another option is to use QApplication.aboutToExit() instead of QMainWindow.closeEvent(),\n"
+              "but closeEvent() better couples lifetime of thread and button.")
+        while thread.isRunning():
+            thread.terminate()
+            QThread.currentThread().sleep(1)
+            print("Waiting for thread to exit...")
 
 
 class QAsyncButton(QPushButton):
@@ -37,15 +94,19 @@ class QAsyncButton(QPushButton):
     Remember not to interact directly with UI in spawned threads.
     Even win32gui.GetWindowText(main_hwnd) can deadlock if called while thread termination is waited.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.contexts = []
-        self.on_get_sync_contexts = None
+        self.create_sync_contexts = None
+        self.create_worker = None
 
         self.on_before_worker = None
         self.on_after_worker = None
 
+        self.ui_thread = QThread.currentThread()
         self.thread = QThread()
+
         close_event = self.window().close_event
         if close_event:
             self.window().close_event.connect(self.on_close)
@@ -53,22 +114,15 @@ class QAsyncButton(QPushButton):
             print("QAsyncButton needs to know when MainWindow is closed to terminate thread if it works.\n"
                   "Propagate a signal from QMainWindow.closeEvent() for this.")
 
-        self.clicked.connect(self.on_clicked)
+        self.clicked.connect(self.on_start_worker)
+        self.thread.finished.connect(self.on_after_thread)
         self.worker = None
 
     @Slot()
     def on_close(self):
-        if self.thread.isRunning():
-            self.thread.quit()
-            deadline = QDeadlineTimer(500)
-            self.thread.wait(deadline)
-            if deadline.hasExpired():
-                print("Warning: thread did not quit fluently and will be terminated.\n"
-                      "This is expected if WinApi calls on QMainWindow are used, which may deadlock wait().\n"
-                      "Proper and easier way is QTimer, but this example deliberately experimented with QAsyncButton.\n"
-                      "Another option is to use QApplication.aboutToExit() instead of QMainWindow.closeEvent(),\n"
-                      "but closeEvent() better couples lifetime of thread and button.")
-                self.thread.terminate()
+        if self.worker:
+            self.on_worker_finished()
+        quit_or_terminate_qthread(self.thread)
 
     def on_before_thread(self):
         self.setEnabled(False)
@@ -86,30 +140,40 @@ class QAsyncButton(QPushButton):
         self.exit_contexts()
 
     @Slot()
-    def on_clicked(self) -> None:
-        assert self.worker
+    def on_start_worker(self):
+        assert self.ui_thread == QThread.currentThread()
+        assert self.worker is None
+
+        self.worker = self.create_worker()
+        self.worker.moveToThread(self.thread)
+
+        # expected termination
+        self.worker.finished.connect(self.on_worker_finished)
+        # thread terminated
+        self.thread.finished.connect(self.on_worker_finished)
+
+        self.thread.started.connect(self.worker.run)
 
         self.on_before_thread()
-        self.thread.finished.connect(self.on_after_thread)
-
         self.thread.start()
 
-    def attach_worker(self, worker: QReusableWorker, on_get_sync_contexts=None,
+    @Slot()
+    def on_worker_finished(self):
+        if self.worker:
+            self.worker.moveToThread(self.ui_thread)
+            self.worker = None
+        quit_or_terminate_qthread(self.thread)
+
+    def attach_worker(self, create_worker: Callable[[], QWorker], create_sync_contexts=None,
                       on_before_worker: Callable = None,
                       on_after_worker: Callable = None):
         """
-        sync_contexts: will wrap worker.run() and are called in caller thread, not in the worker
-        on_before_worker, on_after_worker: similar to contexts if only one is required
+        sync_contexts, on_before_worker, on_after_worker: optional, will wrap worker.run()
         """
-        self.worker = worker
-        self.worker.moveToThread(self.thread)
-
-        self.on_get_sync_contexts = on_get_sync_contexts
+        self.create_worker = create_worker
+        self.create_sync_contexts = create_sync_contexts
         self.on_before_worker = on_before_worker
         self.on_after_worker = on_after_worker
-
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
 
     def exit_contexts(self):
         for c in reversed(self.contexts):
@@ -118,6 +182,6 @@ class QAsyncButton(QPushButton):
         self.contexts = []
 
     def enter_contexts(self):
-        self.contexts = self.on_get_sync_contexts() if self.on_get_sync_contexts else []
+        self.contexts = self.create_sync_contexts() if self.create_sync_contexts else []
         for c in self.contexts:
             c.__enter__()

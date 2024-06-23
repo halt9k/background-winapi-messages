@@ -32,12 +32,16 @@ class MainWindow(MainWindowFrame):
         def always_on_top():
             return [switch_window_flag(self, Qt.WindowStaysOnTopHint, True)]
 
-        self.pick_windows_worker = PickWindowsWorker()
-        self.pick_windows_worker.pick_hwnd.connect(self.on_pick_hwnd)
-        self.ui_wg.pick_windows_button.attach_worker(self.pick_windows_worker,  on_get_sync_contexts=always_on_top,
+        def pick_worker_factory():
+            worker = PickWindowsWorker()
+            worker.pick_hwnd.connect(self.on_pick_hwnd)
+            return worker
+        self.ui_wg.pick_windows_button.attach_worker(pick_worker_factory, create_sync_contexts=always_on_top,
                                                      on_before_worker=self.on_pick_windows_start)
-        self.send_messages_worker = SendMessagesWorker(ui_cg=self.ui_cg, ui_wg=self.ui_wg)
-        self.ui_cg.send_messages_button.attach_worker(self.send_messages_worker, on_get_sync_contexts=always_on_top)
+
+        def send_worker_factory():
+            return SendMessagesWorker(ui_cg=self.ui_cg, ui_wg=self.ui_wg)
+        self.ui_cg.send_messages_button.attach_worker(send_worker_factory, create_sync_contexts=always_on_top)
 
         self.update_hwnd_list(hightlight_new=False)
 
