@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizeP
     QPushButton, QVBoxLayout, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout
 
 # TODO use patterns Luke
+from src.helpers.qt import QComboBoxEx
 from src.helpers.qt_async_button import QAsyncButton
 from src.messages import EnumArg, message_presets
 
@@ -19,6 +20,7 @@ class CommandWidget(QWidget):
         self.layout.addWidget(self.enabled_check)
 
         self.cmd = cmd
+        # TODO attach model instead?
         self.str_param = str_param
         self.enum_param = enum_param
 
@@ -29,18 +31,9 @@ class CommandWidget(QWidget):
             self.layout.addWidget(self.str_param_edit)
 
         if enum_param:
-            self.enum_param_dropdown = QComboBox(self)
+            self.enum_param_dropdown = QComboBoxEx(self, values=enum_param.named_values,
+                                                   default_value=enum_param.value)
 
-            cur_index = None
-            for i, (key, value) in enumerate(enum_param.named_values):
-                self.enum_param_dropdown.addItem(key, value)
-                if value == enum_param.value:
-                    cur_index = i
-            if cur_index:
-                self.enum_param_dropdown.setCurrentIndex(cur_index)
-
-            self.enum_param_dropdown.setMinimumContentsLength(5)
-            self.enum_param_dropdown.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
             self.enum_param_dropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
             self.layout.addWidget(self.enum_param_dropdown)
             self.layout.setStretchFactor(self.enum_param_dropdown, 2)
@@ -51,22 +44,14 @@ class CommandGroup(QGroupBox):
         super().__init__(text, parent)
         self.send_messages_button = QAsyncButton(text="Start Sending...", parent=self)
 
-        # TODO improve
         cmd_widgets = []
         for msg in message_presets:
-            name = msg[0].__name__
-            enum_param = None
-            str_param = None
-            for arg in msg[1: len(msg)]:
-                if type(arg) is str:
-                    str_param = arg
-                if type(arg) is EnumArg:
-                    enum_param = arg
-            cmd_widgets += [CommandWidget(self, name=name, cmd=msg[0], str_param=str_param, enum_param=enum_param)]
+            name = msg.cmd.__name__
+            cmd_widgets += [CommandWidget(self, name=name, cmd=msg.cmd,
+                                          str_param=msg.str_arg1, enum_param=msg.enum_arg1)]
 
         self.command_layout = QVBoxLayout(self)
         for w in cmd_widgets:
-
             self.command_layout.addWidget(w)
 
         self.command_layout.addWidget(self.send_messages_button)

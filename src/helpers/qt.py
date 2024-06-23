@@ -4,7 +4,7 @@ from abc import abstractmethod
 import pydevd
 from PySide6.QtCore import Qt, Signal, QObject, QTimer, Slot, QTimerEvent
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QWidget, QListWidgetItem, QListWidget
+from PySide6.QtWidgets import QWidget, QListWidgetItem, QListWidget, QComboBox
 
 from src.helpers.python_extensions import context_switch
 
@@ -68,6 +68,22 @@ class QDebuggedTimer(QTimer):
     @abstractmethod
     def on_timeout(self):
         raise NotImplementedError
+
+
+class QComboBoxEx(QComboBox):
+    def __init__(self, parent, values, default_value, min_content_length=5):
+        super().__init__(parent)
+        cur_index = None
+        for i, (key, value) in enumerate(values):
+            self.addItem(key, value)
+            if value == default_value:
+                cur_index = i
+        if cur_index:
+            self.setCurrentIndex(cur_index)
+
+        if min_content_length:
+            self.setMinimumContentsLength(min_content_length)
+            self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
 
 
 class QTimerEx(QDebuggedTimer):

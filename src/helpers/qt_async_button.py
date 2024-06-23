@@ -75,17 +75,22 @@ def quit_or_terminate_qthread(thread: QThread):
     thread.quit()
     deadline = QDeadlineTimer(500)
     thread.wait(deadline)
+    if not thread.isRunning():
+        return
+
+    print("Warning: thread did not quit fluently, termination attempt scheduled.\n"
+          "This is expected, for example, if: \n"
+          " -sleep is used"
+          " -WinApi calls on QMainWindow may deadlock wait() during closeEvent().\n"
+          "Proper way is QTimer instead of sleep(), but it may overcomlicate some cases.\n"
+          "Another option is to use QApplication.aboutToExit() instead of QMainWindow.closeEvent(),\n"
+          "but closeEvent() better couples lifetime of thread and button.")
+    thread.terminate()
+    deadline = QDeadlineTimer(5000)
+    thread.wait(deadline)
 
     if thread.isRunning():
-        print("Warning: thread did not quit fluently and will be terminated.\n"
-              "This is expected, for example, if WinApi calls on QMainWindow may deadlock wait() during closeEvent().\n"
-              "Proper way is QTimer instead of sleep(), but it may overcomlicate some cases.\n"
-              "Another option is to use QApplication.aboutToExit() instead of QMainWindow.closeEvent(),\n"
-              "but closeEvent() better couples lifetime of thread and button.")
-        while thread.isRunning():
-            thread.terminate()
-            QThread.currentThread().sleep(1)
-            print("Waiting for thread to exit...")
+        print("Thread termination failed. Python crash expected.")
 
 
 class QAsyncButton(QPushButton):
