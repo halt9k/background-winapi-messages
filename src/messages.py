@@ -41,7 +41,7 @@ class WinMsg:
     str_arg1: str = None
 
 
-message_presets: [WinMsg] = [
+message_presets: List[WinMsg] = [
     # not packing commands even futher to keep debug transparent, arg order is kept for clarity
 
     WinMsg(mouse_events.send_click),

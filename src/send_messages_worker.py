@@ -1,65 +1,76 @@
-from PySide6.QtCore import Slot, QThread
+from dataclasses import dataclass
+from typing import List, Optional
+
+from PySide6.QtCore import Slot, QThread, Signal
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
-from src.helpers.qt import get_selected_data, log
+from src.helpers.qt import Logger, QNTimer, qntimer_timeout_slot
 from src.helpers.qt_async_button import QWorker
 from src.helpers.virtual_methods import override
 from src.messages import run_test_message, WinMsg, EnumArg
-from src.ui.main_window import CommandWidget, CommandGroup, WindowGroup
+
+
+@dataclass(init=True)
+class SendData:
+    hwnds: List[int]
+    messages: List[WinMsg]
 
 
 class SendMessagesWorker(QWorker):
-    # QTimer is better option for this specific task,
+    # non threaded QTimer is better option for this specific task,
     # but thread template may be handy for future extensions,
     # since this is also sandbox for Qt hwnd experiments
 
-    def __init__(self, ui_cg: CommandGroup, ui_wg: WindowGroup):
-        super().__init__()
-        # TODO use slots instead of direct ascess to main window
-        self.ui_cg = ui_cg
-        self.ui_wg = ui_wg
+    request_send_data = Signal()
 
-    def try_send_messages(self):
-        hwnds = get_selected_data(self.ui_wg.window_listbox)
-        if len(hwnds) < 1:
-            log(f'\nNo hwnds selected')
+    def __init__(self):
+        super().__init__()
+        self.request_timer: Optional[QNTimer] = None
+
+    @Slot(SendData)
+    def send_messages(self, data: SendData):
+        if len(data.hwnds) < 1:
+            Logger.log(f'\nNo hwnds selected, send canceled.\n')
             return
         else:
-            log(f'\nTrying to send to hwnds: {hwnds}')
+            Logger.log(f'\nTrying to send to hwnds: {data.hwnds}')
 
         # key_override_str = self.ui.key_entry.text()
         # key_hex = int(key_override_str, 16) if key_override_str else None
-        for hwnd in hwnds:
-            for elem in self.ui_cg.children():
-                if not isinstance(elem, CommandWidget):
-                    continue
-                cw: CommandWidget = elem
-                if not cw.enabled_check.isChecked():
-                    continue
-
-                str_arg = cw.str_param_edit.text() if cw.str_param else None
-                enum_arg_value = cw.enum_param_dropdown.currentData() if cw.enum_param else None
-                msg = WinMsg(cw.cmd, str_arg, EnumArg([], enum_arg_value))
-
+        for hwnd in data.hwnds:
+            for msg in data.messages:
                 run_test_message(hwnd, msg)
-                log(f"{cw.cmd} {msg}")
+                Logger.log(f"{msg}")
                 QThread.msleep(200)
+
+    @Slot()
+    def on_recieve_data(self, data: SendData):
+        """
+        This worker requires UI data to start WinApi messages,
+        UI data better to be recieved on Slot to avoid interthreaded UI ascess,
+        this function recieves UI data
+        """
+        try:
+            self.send_messages(data)
+        except:
+            self.request_timer.stop()
+            self.finished.emit()
+            raise
+
+        self.request_timer.continue_loops()
 
     @Slot()
     @override
     def on_run(self):
-        log(f"Next 10s sending messages to background selected window or \n"
-            f"try to switch window to test foreground send")
+        Logger.log(f"Next 10s sending messages to background selected window or \n"
+                   f"try to switch window to test foreground send")
+        self.request_timer = QNTimer()
+        # continue_loops() can be attached to request or to send, affects who ensures QWorker.finished()
+        self.request_timer.timeout_n.connect(self.request_send_data)
+        self.request_timer.finished.connect(self.finished)
 
-        def on_err(e: Exception):
-            log('Safe_catch: ' + str(e))
+        self.request_timer.start(repeats=10, interval_msec=1000)
 
-        with context_switch(catch_exceptions(on_err), False):
-            for _ in range(0, 10):
-                self.try_send_messages()
-
-                # QTimer alternative approach is also tested on other pick button
-                QThread.msleep(1000)
-        log(f"Send over")
-
-        self.finished.emit()
+    @override
+    def on_finished(self):
+        Logger.log(f"Send over")

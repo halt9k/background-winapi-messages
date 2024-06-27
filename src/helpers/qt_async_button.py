@@ -2,17 +2,19 @@ from abc import abstractmethod
 from typing import Callable
 
 import pydevd
-from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer
+from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer, QEvent
 from PySide6.QtWidgets import QPushButton
-
-from src.helpers.qt import log
+from typing_extensions import override
+from src.helpers.qt import Logger, QTracedThread
+from src.helpers.virtual_methods import virutalmethod
 
 
 class QWorker(QObject):
     finished = Signal()
 
     def __init__(self):
-        super().__init__()
+        super(QWorker, self).__init__()
+        self.finished.connect(self.on_finished)
 
     @abstractmethod
     def on_run(self):
@@ -28,6 +30,10 @@ class QWorker(QObject):
             self.finished.emit()
             raise
 
+    @virutalmethod
+    def on_finished(self):
+        pass
+
 
 '''
 class QReusableWorker(QObject):
@@ -42,7 +48,7 @@ class QReusableWorker(QObject):
 
     def __init__(self):
         super().__init__()
-        self.original_thread = QThread.currentThread()
+        self.original_thread = QTracedThread.currentThread()
 
     @abstractmethod
     def on_run(self):
@@ -65,6 +71,9 @@ class QReusableWorker(QObject):
         self.moveToThread(self.original_thread)
 '''
 
+THREAD_QUIT_DEADLINE_MS = 500
+THREAD_TERMINATION_DEADLINE_MS = 5000
+
 
 def quit_or_terminate_qthread(thread: QThread):
     assert thread != QThread.currentThread()
@@ -73,7 +82,7 @@ def quit_or_terminate_qthread(thread: QThread):
         return
 
     thread.quit()
-    deadline = QDeadlineTimer(500)
+    deadline = QDeadlineTimer(THREAD_QUIT_DEADLINE_MS)
     thread.wait(deadline)
     if not thread.isRunning():
         return
@@ -86,11 +95,11 @@ def quit_or_terminate_qthread(thread: QThread):
           "Another option is to use QApplication.aboutToExit() instead of QMainWindow.closeEvent(),\n"
           "but closeEvent() better couples lifetime of thread and button.")
     thread.terminate()
-    deadline = QDeadlineTimer(5000)
+    deadline = QDeadlineTimer(THREAD_TERMINATION_DEADLINE_MS)
     thread.wait(deadline)
 
     if thread.isRunning():
-        print("Thread termination failed. Python crash expected.")
+        print(f"Thread termination in {THREAD_TERMINATION_DEADLINE_MS}ms failed. Python crash expected.")
 
 
 class QAsyncButton(QPushButton):
@@ -110,7 +119,7 @@ class QAsyncButton(QPushButton):
         self.on_after_worker = None
 
         self.ui_thread = QThread.currentThread()
-        self.thread = QThread()
+        self.thread = QTracedThread()
 
         close_event = self.window().close_event
         if close_event:
@@ -152,9 +161,9 @@ class QAsyncButton(QPushButton):
         self.worker = self.create_worker()
         self.worker.moveToThread(self.thread)
 
-        # expected termination
+        # worker quits as expected
         self.worker.finished.connect(self.on_worker_finished)
-        # thread terminated
+        # thread terminated externally, for example, when main window closed
         self.thread.finished.connect(self.on_worker_finished)
 
         self.thread.started.connect(self.worker.run)
