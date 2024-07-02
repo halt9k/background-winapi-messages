@@ -1,7 +1,6 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
     QPushButton, QVBoxLayout, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout
 
-# TODO use patterns Luke
 from src.helpers.qt import QComboBoxEx
 from src.helpers.qt_async_button import QAsyncButton
 from src.messages import EnumArg, message_presets
@@ -20,7 +19,6 @@ class CommandWidget(QWidget):
         self.layout.addWidget(self.enabled_check)
 
         self.cmd = cmd
-        # TODO attach model instead?
         self.str_param = str_param
         self.enum_param = enum_param
 

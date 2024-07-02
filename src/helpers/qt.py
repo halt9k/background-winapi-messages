@@ -75,7 +75,6 @@ def get_selected_data(lw: QListWidget):
 
 
 class QTracedThread(QThread):
-    # TODO post on stack, must have both in thread and worker?
     @override
     def run(self):
         # without this, breakpoints may not work under IDE
@@ -102,6 +101,8 @@ class QComboBoxEx(QComboBox):
 class QNTimer(QTimer):
     """
     This ~async QNTimer is intended to reaplce a standard sequential for loop.
+    Direct use case is replace for blocking sleeps in threads,
+    there may be other use cases, like repeats on failures.
 
     # started.emit()
     for n in range (0, repeats)
@@ -111,8 +112,8 @@ class QNTimer(QTimer):
 
     There are multile ways to implement loop timer:
         can be done via 1 or 2, QNTimer uses _1_:
-        _1_) overriding timeout with new signal timeout_py
-        2) replacing signals completely with callbacks
+        _1_) overriding timeout with new signal timeout_n
+        2) replacing signals completely with callbacks since for loop is closely coupled anyway
     There are multile ways to have finished() call either, QNTimer uses _1_:
         _1_) only if expected amount of loops passed, stopping timer on each loop until started exernally
         2) call loops and finished async no matter what, just when time reached
@@ -126,7 +127,7 @@ class QNTimer(QTimer):
         Parameters:
         stop_on_emit:
             - False: QNTimer simply firing all events and than finish no matter what
-            - True: QNTimer expects continue_steps Slot after each timeout and finish won't happen without continue
+            - True: QNTimer expects .continue_steps() after each timeout (and finish only if all finished)
         """
         super().__init__(*args, **kwargs)
 
@@ -156,7 +157,7 @@ class QNTimer(QTimer):
         super().start()
 
     @Slot()
-    def continue_loops(self):
+    def continue_loop(self):
         assert self.count > 0
         super().start()
 
@@ -168,7 +169,7 @@ class QNTimer(QTimer):
 def qntimer_timeout_slot(method):
     """
     Good wrapper for simple on_ntimer routines,
-    but finally may be async if a chain of Qt events is expected
+    but continue_loop() may be async if a chain of Qt events is expected
     """
 
     @functools.wraps(method)
@@ -179,6 +180,5 @@ def qntimer_timeout_slot(method):
             timer.quit()
             raise
         finally:
-            # TODO Slot or callback?
-            timer.continue_loops()
+            timer.continue_loop()
     return wrapper

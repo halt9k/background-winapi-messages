@@ -25,7 +25,10 @@ class SendMessagesWorker(QWorker):
 
     def __init__(self):
         super().__init__()
-        self.request_timer: Optional[QNTimer] = None
+        self.request_timer = QNTimer(parent=self)
+        # continue_loops() can be attached to request or to send, affects who ensures QWorker.finished()
+        self.request_timer.timeout_n.connect(self.request_send_data)
+        self.request_timer.finished.connect(self.finished)
 
     @Slot(SendData)
     def send_messages(self, data: SendData):
@@ -57,18 +60,13 @@ class SendMessagesWorker(QWorker):
             self.finished.emit()
             raise
 
-        self.request_timer.continue_loops()
+        self.request_timer.continue_loop()
 
     @Slot()
     @override
     def on_run(self):
         Logger.log(f"Next 10s sending messages to background selected window or \n"
                    f"try to switch window to test foreground send")
-        self.request_timer = QNTimer()
-        # continue_loops() can be attached to request or to send, affects who ensures QWorker.finished()
-        self.request_timer.timeout_n.connect(self.request_send_data)
-        self.request_timer.finished.connect(self.finished)
-
         self.request_timer.start(repeats=10, interval_msec=1000)
 
     @override

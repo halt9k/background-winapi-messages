@@ -22,8 +22,9 @@ class PickWindowsWorker(QWorker):
         self.cursor_wnd_tracker = None
         self.focused_wnd_tracker = None
 
-        # TODO if worker later moved to thread, timer is not ?!
-        self.check_timer: Optional[QNTimer] = None
+        self.check_timer = QNTimer(stop_on_emit=True, parent=self)
+        self.check_timer.timeout_n.connect(self.on_check_timer)
+        self.check_timer.finished.connect(self.finished)
 
     def check_window_under_cursor(self) -> bool:
         changed, (hwnd, title) = self.cursor_wnd_tracker.track()
@@ -54,10 +55,6 @@ class PickWindowsWorker(QWorker):
 
         self.cursor_wnd_tracker = ChangeTracker(get_window_info_under_cursor)
         self.focused_wnd_tracker = ChangeTracker(win32gui.GetForegroundWindow)
-
-        self.check_timer = QNTimer(stop_on_emit=True)
-        self.check_timer.timeout_n.connect(self.on_check_timer)
-        self.check_timer.finished.connect(self.finished)
         self.check_timer.start(repeats=100, interval_msec=100)
 
     @Slot()

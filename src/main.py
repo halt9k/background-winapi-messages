@@ -34,7 +34,6 @@ class MainWindow(MainWindowFrame):
         def always_on_top():
             return [switch_window_flag(self, Qt.WindowStaysOnTopHint, True)]
 
-        # TODO is this final approach?
         def pick_worker_factory():
             worker = PickWindowsWorker()
             worker.pick_hwnd.connect(self.on_pick_hwnd)

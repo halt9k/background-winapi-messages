@@ -182,7 +182,8 @@ class QAsyncButton(QPushButton):
                       on_before_worker: Callable = None,
                       on_after_worker: Callable = None):
         """
-        sync_contexts, on_before_worker, on_after_worker: optional, will wrap worker.run()
+        create_worker: factory function because on each button press a new worker must be created
+        sync_contexts, on_before_worker, on_after_worker: optionals, will wrap worker.run() in UI thread
         """
         self.create_worker = create_worker
         self.create_sync_contexts = create_sync_contexts
