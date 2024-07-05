@@ -39,7 +39,7 @@ class MainWindow(MainWindowFrame):
             worker.pick_hwnd.connect(self.on_pick_hwnd)
             return worker
         self.ui_wg.pick_windows_button.attach_worker(pick_worker_factory, create_sync_contexts=always_on_top,
-                                                     on_before_worker=self.on_pick_windows_start)
+                                                     cb_before_worker=self.on_pick_windows_start)
 
         def send_worker_factory():
             worker = SendMessagesWorker()

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from PySide6.QtCore import Slot, QThread, Signal
+from PySide6.QtCore import Slot, QThread, Signal, QTimer
 
 from src.helpers.python_extensions import catch_exceptions, context_switch
 from src.helpers.qt import Logger, QNTimer, qntimer_timeout_slot
@@ -24,13 +24,12 @@ class SendMessagesWorker(QWorker):
     request_send_data = Signal()
 
     def __init__(self):
-        super().__init__()
+        super(SendMessagesWorker, self).__init__()
         self.request_timer = QNTimer(parent=self)
         # continue_loops() can be attached to request or to send, affects who ensures QWorker.finished()
         self.request_timer.timeout_n.connect(self.request_send_data)
         self.request_timer.finished.connect(self.finished)
 
-    @Slot(SendData)
     def send_messages(self, data: SendData):
         if len(data.hwnds) < 1:
             Logger.log(f'\nNo hwnds selected, send canceled.\n')
@@ -69,6 +68,7 @@ class SendMessagesWorker(QWorker):
                    f"try to switch window to test foreground send")
         self.request_timer.start(repeats=10, interval_msec=1000)
 
+    @Slot()
     @override
     def on_finished(self):
         Logger.log(f"Send over")

@@ -1,11 +1,11 @@
 from abc import abstractmethod
-from typing import Callable
+from typing import Callable, Optional
 
 import pydevd
-from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer, QEvent
+from PySide6.QtCore import QThread, Slot, QObject, Signal, QDeadlineTimer
 from PySide6.QtWidgets import QPushButton
 from typing_extensions import override
-from src.helpers.qt import Logger, QTracedThread
+from src.helpers.qt import QTracedThread
 from src.helpers.virtual_methods import virutalmethod
 
 
@@ -30,6 +30,7 @@ class QWorker(QObject):
             self.finished.emit()
             raise
 
+    @Slot()
     @virutalmethod
     def on_finished(self):
         pass
@@ -80,11 +81,11 @@ def quit_or_terminate_qthread(thread: QThread):
 
     if not thread.isRunning():
         return
-
     thread.quit()
+
     deadline = QDeadlineTimer(THREAD_QUIT_DEADLINE_MS)
-    thread.wait(deadline)
-    if not thread.isRunning():
+    quited = thread.wait(deadline)
+    if quited:
         return
 
     print("Warning: thread did not quit fluently, termination attempt scheduled.\n"
@@ -96,10 +97,10 @@ def quit_or_terminate_qthread(thread: QThread):
           "but closeEvent() better couples lifetime of thread and button.")
     thread.terminate()
     deadline = QDeadlineTimer(THREAD_TERMINATION_DEADLINE_MS)
-    thread.wait(deadline)
+    quited = thread.wait(deadline)
 
-    if thread.isRunning():
-        print(f"Thread termination in {THREAD_TERMINATION_DEADLINE_MS}ms failed. Python crash expected.")
+    if not quited:
+        raise Exception(f"Thread termination in {THREAD_TERMINATION_DEADLINE_MS}ms failed.")
 
 
 class QAsyncButton(QPushButton):
@@ -115,80 +116,90 @@ class QAsyncButton(QPushButton):
         self.create_sync_contexts = None
         self.create_worker = None
 
-        self.on_before_worker = None
-        self.on_after_worker = None
+        self.cb_before_worker = None
+        self.cb_after_worker = None
 
         self.ui_thread = QThread.currentThread()
-        self.thread = QTracedThread()
+        self.thread: Optional[QTracedThread] = None
+        self.worker: Optional[QWorker] = None
 
         close_event = self.window().close_event
         if close_event:
-            self.window().close_event.connect(self.on_close)
+            self.window().close_event.connect(self.clean_worker)
         else:
             print("QAsyncButton needs to know when MainWindow is closed to terminate thread if it works.\n"
                   "Propagate a signal from QMainWindow.closeEvent() for this.")
 
-        self.clicked.connect(self.on_start_worker)
-        self.thread.finished.connect(self.on_after_thread)
-        self.worker = None
-
-    @Slot()
-    def on_close(self):
-        if self.worker:
-            self.on_worker_finished()
-        quit_or_terminate_qthread(self.thread)
+        self.clicked.connect(self.on_start)
 
     def on_before_thread(self):
+        assert self.ui_thread == QThread.currentThread()
         self.setEnabled(False)
 
         self.enter_contexts()
-        if self.on_before_worker:
-            self.on_before_worker()
+        if self.cb_before_worker:
+            self.cb_before_worker()
 
     @Slot()
     def on_after_thread(self):
+        assert self.ui_thread == QThread.currentThread()
+
+        if self.cb_after_worker:
+            self.cb_after_worker()
+        self.exit_contexts()
         self.setEnabled(True)
 
-        if self.on_after_worker:
-            self.on_after_worker()
-        self.exit_contexts()
-
     @Slot()
-    def on_start_worker(self):
+    def on_start(self):
         assert self.ui_thread == QThread.currentThread()
         assert self.worker is None
 
-        self.worker = self.create_worker()
+        self.thread = QTracedThread()
+        self.worker: QWorker = self.create_worker()
         self.worker.moveToThread(self.thread)
-
         # worker quits as expected
-        self.worker.finished.connect(self.on_worker_finished)
-        # thread terminated externally, for example, when main window closed
-        self.thread.finished.connect(self.on_worker_finished)
+        self.worker.finished.connect(self.clean_worker)
+        self.worker.destroyed.connect(self.stop_thread)
 
         self.thread.started.connect(self.worker.run)
+        self.thread.finished.connect(self.on_after_thread)
+        # thread terminated externally, for example, when main window closed
+        self.thread.finished.connect(self.clean_thread)
 
         self.on_before_thread()
         self.thread.start()
 
     @Slot()
-    def on_worker_finished(self):
-        if self.worker:
-            self.worker.moveToThread(self.ui_thread)
-            self.worker = None
-        quit_or_terminate_qthread(self.thread)
+    def stop_thread(self):
+        if self.thread:
+            quit_or_terminate_qthread(self.thread)
 
-    def attach_worker(self, create_worker: Callable[[], QWorker], create_sync_contexts=None,
-                      on_before_worker: Callable = None,
-                      on_after_worker: Callable = None):
+    @Slot()
+    def clean_thread(self):
+        assert self.thread
+        self.thread.deleteLater()
+        self.thread = None
+
+    @Slot()
+    # TODO thread.terminate() calls this and crashes right after, is worker essential?
+    def clean_worker(self):
+        if not self.worker:
+            return
+        # self.worker.moveToThread(self.ui_thread)
+        self.worker.deleteLater()
+        self.worker = None
+
+    def attach_worker(self, cb_create_worker: Callable[[], QWorker], create_sync_contexts=None,
+                      cb_before_worker: Callable = None,
+                      cb_after_worker: Callable = None):
         """
         create_worker: factory function because on each button press a new worker must be created
         sync_contexts, on_before_worker, on_after_worker: optionals, will wrap worker.run() in UI thread
         """
-        self.create_worker = create_worker
+        self.create_worker = cb_create_worker
         self.create_sync_contexts = create_sync_contexts
-        self.on_before_worker = on_before_worker
-        self.on_after_worker = on_after_worker
+        self.cb_before_worker = cb_before_worker
+        self.cb_after_worker = cb_after_worker
 
     def exit_contexts(self):
         for c in reversed(self.contexts):
