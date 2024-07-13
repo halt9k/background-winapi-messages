@@ -50,8 +50,6 @@ class QNTimer(QTimer):
 
     @Slot()
     def on_timeout(self):
-        # TODO provokes crash on close?
-        # pydevd.settrace(suspend=False)
         if self.target_n <= 0:
             self.break_loop()
             return
@@ -103,7 +101,6 @@ class QNTimer(QTimer):
     class Loop:
         break_loop: Callable
 
-    # TODO update py qt library
     @contextlib.contextmanager
     def qntimer_timeout_guard(*args):
         """

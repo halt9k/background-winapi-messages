@@ -4,7 +4,7 @@ from pathlib import Path
 # Qt intellisense pip install PySide6-stubs
 from PySide6.QtCore import Qt, Signal, Slot, qInstallMessageHandler, QtMsgType
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QAbstractSlider
 
 import helpers.os_helpers  # noqa: F401
 from lib.qt.qt import QListWidgetItemEx, QWindowUtils, q_info
@@ -60,7 +60,6 @@ class MainWindow(MainWindowFrame):
     def on_log(self, mode, context, msg):
         if mode == QtMsgType.QtInfoMsg:
             self.ui_cw.log_text.append(msg)
-            self.ui_cw.log_text.scrollContentsBy(0, self.ui_cw.log_text.contentsMargins().bottom())
         elif mode != QtMsgType.QtDebugMsg:
             print(msg)
 

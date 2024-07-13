@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
     QPushButton, QVBoxLayout, QLineEdit, QCheckBox, QAbstractItemView, QHBoxLayout
 
-from lib.qt.qt import QComboBoxEx, QListWidgetEx
+from lib.qt.qt import QComboBoxEx, QListWidgetEx, QTextEditEx
 from lib.qt.qt_async_button import QAsyncButton
 from src.messages import EnumArg, message_presets
 
@@ -78,7 +78,7 @@ class CentralWidget(QWidget):
         self.window_group = WindowGroup("Select window", self)
         self.command_group = CommandGroup("Select messages", self)
 
-        self.log_text = QTextEdit(self)
+        self.log_text = QTextEditEx(self)
         self.log_text.setReadOnly(True)
         # self.log_text.setMinimumHeight(200)
 

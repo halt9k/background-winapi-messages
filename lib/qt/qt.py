@@ -1,9 +1,9 @@
 from contextlib import nullcontext, contextmanager
 from typing import Dict
 
-from PySide6.QtCore import Qt, qCInfo, QLoggingCategory
+from PySide6.QtCore import Qt, qCInfo, QLoggingCategory, Slot
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QWidget, QListWidgetItem, QListWidget, QComboBox
+from PySide6.QtWidgets import QWidget, QListWidgetItem, QListWidget, QComboBox, QTextEdit, QAbstractSlider
 
 
 def q_info(msg):
@@ -74,4 +74,23 @@ class QComboBoxEx(QComboBox):
         if min_content_length:
             self.setMinimumContentsLength(min_content_length)
             self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+
+
+class QTextEditEx(QTextEdit):
+    """ Keeps scroll at the bottom """
+
+    def __init__(self, *args, **kwargs):
+        super(QTextEditEx, self).__init__(*args, **kwargs)
+        self.verticalScrollBar().rangeChanged.connect(self.on_range_changed)
+        self.at_bottom = True
+
+    def append(self, text):
+        scrollbar = self.verticalScrollBar()
+        self.at_bottom = scrollbar.value() >= (scrollbar.maximum() - 4)
+        super().append(text)
+
+    @Slot()
+    def on_range_changed(self):
+        if self.at_bottom:
+            self.verticalScrollBar().triggerAction(QAbstractSlider.SliderAction.SliderToMaximum)
 

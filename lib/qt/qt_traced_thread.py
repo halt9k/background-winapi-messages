@@ -4,15 +4,15 @@ from abc import abstractmethod
 
 import pydevd
 from PySide6.QtCore import QThread, QObject, Signal, Slot, QDeadlineTimer, qWarning, QMutex, QMutexLocker, \
-    qInstallMessageHandler, qDebug
+    qInstallMessageHandler, qDebug, qCritical
 from typing_extensions import override
 
 from src.helpers.virtual_methods import virutalmethod
 
 
 class QTracedThread(QThread):
-    THREAD_QUIT_DEADLINE_MS = 500
-    THREAD_TERMINATION_DEADLINE_MS = 5000
+    QUIT_DEADLINE_MS = 500
+    TERMINATION_DEADLINE_MS = 5000
 
     @override
     def run(self):
@@ -30,24 +30,26 @@ class QTracedThread(QThread):
             return
         thread.quit()
 
-        deadline = QDeadlineTimer(QTracedThread.THREAD_QUIT_DEADLINE_MS)
-        quited = thread.wait(deadline)
-        if quited:
+        deadline = QDeadlineTimer(QTracedThread.QUIT_DEADLINE_MS)
+        if thread.wait(deadline):
+            return
+        qWarning(f"Warning: thread quit takes more than {QTracedThread.QUIT_DEADLINE_MS}ms.\n")
+
+        deadline = QDeadlineTimer(QTracedThread.TERMINATION_DEADLINE_MS)
+        if thread.wait(deadline):
             return
 
-        qWarning("Warning: thread did not quit fluently, termination attempt scheduled.\n"
-                 "This is expected, for example, if: \n"
-                 " - sleep is used"
-                 " - WinApi calls on QMainWindow may deadlock wait() during closeEvent()\n"
-                 "Proper way is QTimer instead of sleep(), but it may overcomlicate some cases.\n"
-                 "Another option is to use QApplication.aboutToExit() instead of QMainWindow.closeEvent(),\n"
-                 "but closeEvent() better couples lifetime of thread and button.")
+        # Also consider QApplication.aboutToExit() instead of QMainWindow.closeEvent(),
+        # but closeEvent() better couples lifetime of thread and button.
+        # Also consider QTimer instead of sleep(), but it may overcomlicate some cases.
+        qCritical(f"Error: thread quit took more than {QTracedThread.TERMINATION_DEADLINE_MS}, "
+               "crash on termination attempt is expected. Possible reasons: \n"
+               " - sleep() is used in the thread"
+               " - WinApi calls on QMainWindow may deadlock wait() during closeEvent()\n")
         thread.terminate()
-        deadline = QDeadlineTimer(QTracedThread.THREAD_TERMINATION_DEADLINE_MS)
-        quited = thread.wait(deadline)
 
-        if not quited:
-            raise TimeoutError(f"Thread termination in {QTracedThread.THREAD_TERMINATION_DEADLINE_MS}ms failed.")
+        if thread.isRunning():
+            raise TimeoutError(f"Thread termination has failed.")
 
 
 class QWorker(QObject):

@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from PySide6.QtCore import QThread, Slot, qFatal, qDebug
+from PySide6.QtCore import QThread, Slot, qDebug, qCritical
 from PySide6.QtWidgets import QPushButton
 
 from .qt_traced_thread import QTracedThread, QWorker
@@ -30,8 +30,8 @@ class QAsyncButton(QPushButton):
         if close_event:
             close_event.connect(self.stop_thread)
         else:
-            qFatal("QAsyncButton needs to know when MainWindow is closed to terminate thread if it works.\n"
-                   "Propagate a signal from QMainWindow.closeEvent() for this.")
+            qCritical("QAsyncButton needs to know when MainWindow is closed to terminate thread if it works.\n"
+                      "Propagate a signal from QMainWindow.closeEvent() for this.")
 
         self.clicked.connect(self.on_start)
 

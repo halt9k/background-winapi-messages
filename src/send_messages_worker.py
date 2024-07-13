@@ -16,19 +16,19 @@ class SendData:
     messages: List[WinMsg]
 
 
-# TODO something locks
 class SendMessagesWorker(QWorker):
     # non threaded QTimer is better option for this specific task,
     # but thread template may be handy for future extensions,
     # since this is also sandbox for Qt hwnd experiments
 
-    request_send_data = Signal()
+    request_send_data = Signal(int)
 
     def __init__(self):
         super(SendMessagesWorker, self).__init__()
         self.request_timer = QNTimer(self)
-        # continue_loops() can be attached to request or to send, affects who ensures QWorker.finished()
-        # TODO signal mismatch - source of crash?
+
+        # qntimer_timeout_guard() can be attached to request_send_data or to on_recieve_data,
+        # affects who ensures QWorker.finished()
         self.request_timer.timeout_n.connect(self.request_send_data)
         self.request_timer.finished.connect(self.finished)
 
@@ -46,7 +46,7 @@ class SendMessagesWorker(QWorker):
             for msg in data.messages:
                 run_test_message(hwnd, msg)
                 q_info(f"{msg}")
-                QThread.msleep(20)
+                QThread.msleep(150)
 
     @Slot()
     def on_recieve_data(self, data: SendData):
@@ -63,7 +63,7 @@ class SendMessagesWorker(QWorker):
     def on_run(self):
         q_info(f"Next 10s sending messages to background selected window or \n"
                f"try to switch window to test foreground send")
-        self.request_timer.start(loop_n=2, interval_msec=100)
+        self.request_timer.start(loop_n=10, interval_msec=100)
 
     @Slot()
     @override
