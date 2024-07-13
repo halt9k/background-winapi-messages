@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Union
+from typing import List, Optional
 
 from win32api import CloseHandle, OpenProcess, GetWindowLong
 from win32con import PROCESS_ALL_ACCESS, GWL_STYLE, WS_VISIBLE

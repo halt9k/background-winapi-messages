@@ -1,8 +1,7 @@
+import fnmatch
 import inspect
-import threading
 from contextlib import contextmanager, nullcontext
 from typing import Tuple, Any, Type, List, Callable
-import fnmatch
 
 
 def context_switch(context, enabled):
@@ -16,20 +15,6 @@ def catch_exceptions(on_catch: Callable[[Exception], None] = None):
     except Exception as e:
         if on_catch:
             on_catch(e)
-
-
-def run_in_thread(func, *args, **kwargs):
-    # result = None
-
-    def thread_target():
-        # nonlocal result
-        # result = func(*args, **kwargs)
-        func(*args, **kwargs)
-
-    thread = threading.Thread(target=thread_target)
-    thread.start()
-    # thread.join()
-    # return result
 
 
 class ChangeTracker:

@@ -1,8 +1,8 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
-    QPushButton, QVBoxLayout, QLineEdit, QCheckBox, QAbstractItemView, QComboBox, QHBoxLayout
+    QPushButton, QVBoxLayout, QLineEdit, QCheckBox, QAbstractItemView, QHBoxLayout
 
-from src.helpers.qt import QComboBoxEx
-from src.helpers.qt_async_button import QAsyncButton
+from lib.qt.qt import QComboBoxEx, QListWidgetEx
+from lib.qt.qt_async_button import QAsyncButton
 from src.messages import EnumArg, message_presets
 
 
@@ -60,7 +60,7 @@ class WindowGroup(QGroupBox):
         super().__init__(text, parent)
 
         # self.window_group.setFrameStyle(QFrame.StyledPanel)
-        self.window_listbox = QListWidget(self)
+        self.window_listbox = QListWidgetEx(self)
 
         self.window_listbox.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.pick_windows_button = QAsyncButton(text="Pick under cursor...", parent=self)

@@ -1,11 +1,10 @@
-from typing import Optional
-
 import win32gui
 from PySide6.QtCore import Signal, Slot
 
-from src.helpers.python_extensions import catch_exceptions, ChangeTracker, context_switch
-from src.helpers.qt import Logger, QNTimer, qntimer_timeout_slot
-from src.helpers.qt_async_button import QWorker
+from lib.qt.qt import q_info
+from src.helpers.python_extensions import ChangeTracker
+from lib.qt.qt_n_timer import QNTimer
+from lib.qt.qt_async_button import QWorker
 from src.helpers.virtual_methods import override
 from src.helpers.winapi.other import get_window_info_under_cursor
 
@@ -22,7 +21,7 @@ class PickWindowsWorker(QWorker):
         self.cursor_wnd_tracker = None
         self.focused_wnd_tracker = None
 
-        self.check_timer = QNTimer(stop_on_emit=True, parent=self)
+        self.check_timer = QNTimer(self)
         self.check_timer.timeout_n.connect(self.on_check_timer)
         self.check_timer.finished.connect(self.finished)
 
@@ -30,7 +29,7 @@ class PickWindowsWorker(QWorker):
         changed, (hwnd, title) = self.cursor_wnd_tracker.track()
 
         if changed:
-            Logger.log(f'Hwnd: {hwnd}, title: {title}')
+            q_info(f'Hwnd: {hwnd}, title: {title}')
 
         changed_focus, _ = self.focused_wnd_tracker.track()
         if changed_focus:
@@ -38,26 +37,26 @@ class PickWindowsWorker(QWorker):
             return False
         return True
 
-    @qntimer_timeout_slot
     def on_check_timer(self, n):
         # it was also possible to skip QTimer and threads
         # but event based approach makes a proper experimental sandbox for future tests
-        if not self.check_window_under_cursor():
-            self.check_timer.stop()
-            self.finished.emit()
+        with self.check_timer.qntimer_timeout_guard() as loop:
+            if not self.check_window_under_cursor():
+                self.finished.emit()
+                loop.break_loop()
 
     @Slot()
     @override
     def on_run(self):
-        Logger.log("\n"
-                   "Move cursor around next 10s and check log.\n"
-                   "Change focus (click) to select hwnd in the list.\n")
+        q_info("\n"
+               "Move cursor around next 10s and check log.\n"
+               "Change focus (click) to select hwnd in the list.\n")
 
         self.cursor_wnd_tracker = ChangeTracker(get_window_info_under_cursor)
         self.focused_wnd_tracker = ChangeTracker(win32gui.GetForegroundWindow)
-        self.check_timer.start(repeats=100, interval_msec=100)
+        self.check_timer.start(loop_n=100, interval_msec=100)
 
     @Slot()
     @override
     def on_finished(self):
-        Logger.log('Pick over')
+        q_info('Pick over')
