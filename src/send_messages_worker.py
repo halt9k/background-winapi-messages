@@ -63,7 +63,7 @@ class SendMessagesWorker(QWorker):
     def on_run(self):
         q_info(f"Next 10s sending messages to background selected window or \n"
                f"try to switch window to test foreground send")
-        self.request_timer.start(loop_n=10, interval_msec=100)
+        self.request_timer.start(loop_n=20, interval_msec=1000)
 
     @Slot()
     @override

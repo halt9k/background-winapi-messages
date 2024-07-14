@@ -50,8 +50,8 @@ message_presets: List[WinMsg] = [
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'a'),
     WinMsg(keybd_event, 'VK_LCONTROL', EnumArg(keyevent_args, win32con.KEYEVENTF_KEYUP)),
     WinMsg(SendMessage, EnumArg(wm_args, win32con.WM_CHAR), 'b'),
-    WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'c'),
-    WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'c'),
+    WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'VK_RETURN'),
+    WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'VK_RETURN'),
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_CHAR), 'd'),
     WinMsg(keybd_event, 'e', EnumArg(keyevent_args, KEYEVENTF_KEYDOWN)),
     WinMsg(keybd_event, 'e', EnumArg(keyevent_args, win32con.KEYEVENTF_KEYUP))

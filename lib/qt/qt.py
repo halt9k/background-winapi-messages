@@ -86,7 +86,7 @@ class QTextEditEx(QTextEdit):
 
     def append(self, text):
         scrollbar = self.verticalScrollBar()
-        self.at_bottom = scrollbar.value() >= (scrollbar.maximum() - 4)
+        self.at_bottom = scrollbar.value() >= scrollbar.maximum() * 0.9
         super().append(text)
 
     @Slot()
