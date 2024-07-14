@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from PySide6.QtCore import Slot, QThread, Signal
+from PySide6.QtCore import Slot, QThread, Signal, qWarning
 
 from lib.qt.qt import q_info
 from lib.qt.qt_async_button import QWorker
@@ -55,8 +55,11 @@ class SendMessagesWorker(QWorker):
         UI data better to be recieved on Slot to avoid interthreaded UI ascess,
         this function recieves UI data
         """
-        with self.request_timer.qntimer_timeout_guard():
-            self.send_messages(data)
+        try:
+            with self.request_timer.qntimer_timeout_guard():
+                self.send_messages(data)
+        except (RuntimeWarning) as e:
+            qWarning(str(e))
 
     @Slot()
     @override

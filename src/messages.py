@@ -50,12 +50,22 @@ message_presets: List[WinMsg] = [
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'a'),
     WinMsg(keybd_event, 'VK_LCONTROL', EnumArg(keyevent_args, win32con.KEYEVENTF_KEYUP)),
     WinMsg(SendMessage, EnumArg(wm_args, win32con.WM_CHAR), 'b'),
-    WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'VK_RETURN'),
+    WinMsg(SendMessage, EnumArg(wm_args, win32con.WM_CHAR), '0x20'),
+    WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'VK_TAB'),
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'VK_RETURN'),
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_CHAR), 'd'),
     WinMsg(keybd_event, 'e', EnumArg(keyevent_args, KEYEVENTF_KEYDOWN)),
     WinMsg(keybd_event, 'e', EnumArg(keyevent_args, win32con.KEYEVENTF_KEYUP))
+
 ]
+
+
+def is_hex(s):
+    try:
+        int(s, 16)
+        return True
+    except ValueError:
+        return False
 
 
 def key_code(key: str):
@@ -65,10 +75,13 @@ def key_code(key: str):
     elif key.isnumeric():
         # '143'
         return int(key)
+    elif is_hex(key):
+        return int(key, 16)
     else:
         # 'VK_TAB'
         found_key = [arg for arg in vk_args if arg[0] == key]
-        assert len(found_key) > 0
+        if len(found_key) == 0:
+            raise RuntimeWarning(f"Code not found: {key}")
         return found_key[0][1]
 
 
