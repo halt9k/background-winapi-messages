@@ -19,11 +19,12 @@ KEYEVENTF_KEYDOWN = 0
 common_keyevents = get_named_consts(win32con, 'KEYEVENTF_*', int, [win32con.KEYEVENTF_KEYUP])
 keyevent_args = [('KEYEVENTF_KEYDOWN', KEYEVENTF_KEYDOWN)] + common_keyevents
 
+common_wms = [win32con.WM_KEYDOWN, win32con.WM_CHAR, win32con.WM_KEYUP]
 
 @dataclass(init=True)
 class EnumArg:
     named_values: List[Tuple[str, int]]
-    value: int
+    initial_value: int
 
 
 @dataclass
@@ -44,7 +45,9 @@ class WinMsg:
 message_presets: List[WinMsg] = [
     # not packing commands even futher to keep debug transparent, arg order is kept for clarity
 
-    WinMsg(mouse_events.send_click),
+    # TODO test
+    # TODO https://stackoverflow.com/questions/59285854/is-there-a-way-to-send-a-click-event-to-a-window-in-the-background-in-python
+    WinMsg(mouse_events.send_click, EnumArg(mouse_events.msg_type, PostMessage)),
     WinMsg(keybd_event, 'VK_LCONTROL', EnumArg(keyevent_args, KEYEVENTF_KEYDOWN)),
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'a'),
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'a'),
@@ -89,7 +92,7 @@ def run_test_message(hwnd, win_msg: WinMsg):
     # cmd also can have any custom user function like mouse_events.send_click
 
     key = key_code(win_msg.str_arg1) if win_msg.str_arg1 else None
-    enum_arg_value = win_msg.enum_arg1.value if win_msg.enum_arg1 else None
+    enum_arg_value = win_msg.enum_arg1.initial_value if win_msg.enum_arg1 else None
 
     if win_msg.cmd == mouse_events.send_click:
         l, t, r, b = GetWindowRect(hwnd)

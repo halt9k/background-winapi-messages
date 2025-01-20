@@ -30,7 +30,7 @@ class CommandWidget(QWidget):
 
         if enum_param:
             self.enum_param_dropdown = QComboBoxEx(self, values=enum_param.named_values,
-                                                   default_value=enum_param.value)
+                                                   default_value=enum_param.initial_value)
 
             self.enum_param_dropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
             self.layout.addWidget(self.enum_param_dropdown)
