@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from PySide6.QtCore import QThread, Slot, qDebug, qCritical
+from PySide6.QtCore import QThread, Slot, qDebug, qCritical, Qt
 from PySide6.QtWidgets import QPushButton
 
 from .qt_traced_thread import QTracedThread, QWorker
@@ -82,8 +82,8 @@ class QAsyncButton(QPushButton):
         self.create_workthread()
         qDebug('QAsyncButton.on_start')
 
-        self.thread.started.connect(self.worker.run)
-
+        self.thread.started_fix.connect(self.worker.run, Qt.ConnectionType.QueuedConnection)
+		
         # if worker quits as expected, this call is direct signal
         # thread can also be stopped externally, for example, when main window closed
         # in that case, call to stop_thread can be from other signal

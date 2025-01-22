@@ -54,6 +54,7 @@ class PickWindowsWorker(QWorker):
 
         self.cursor_wnd_tracker = ChangeTracker(get_window_info_under_cursor)
         self.focused_wnd_tracker = ChangeTracker(win32gui.GetForegroundWindow)
+
         self.check_timer.start(loop_n=100, interval_msec=100)
 
     @Slot()

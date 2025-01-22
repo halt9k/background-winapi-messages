@@ -14,12 +14,17 @@ class QTracedThread(QThread):
     QUIT_DEADLINE_MS = 500
     TERMINATION_DEADLINE_MS = 5000
 
+    # signal override is required here,
+    # or PyCharm users specifically during debug may face incorrect thread of slots connected to started
+    started_fix = Signal()
+
     @override
     def run(self):
         # controls timer events tracing even when worker is used
         pydevd.settrace(suspend=False)
 
         qDebug('QTracedThread.run')
+        self.started_fix.emit()
         super().run()
 
     @staticmethod
@@ -43,9 +48,9 @@ class QTracedThread(QThread):
         # but closeEvent() better couples lifetime of thread and button.
         # Also consider QTimer instead of sleep(), but it may overcomlicate some cases.
         qCritical(f"Error: thread quit took more than {QTracedThread.TERMINATION_DEADLINE_MS}, "
-               "crash on termination attempt is expected. Possible reasons: \n"
-               " - sleep() is used in the thread"
-               " - WinApi calls on QMainWindow may deadlock wait() during closeEvent()\n")
+                  "crash on termination attempt is expected. Possible reasons: \n"
+                  " - sleep() is used in the thread"
+                  " - WinApi calls on QMainWindow may deadlock wait() during closeEvent()\n")
         thread.terminate()
 
         if thread.isRunning():
@@ -123,15 +128,29 @@ class QReusableWorker(QObject):
 
 
 class QSafeThreadedPrint:
-    """ Redirects qDebug, qWarning, etc to output """
     mutex = QMutex()
+    final_handler = None
 
     @staticmethod
     def log_handler(mode, context, msg):
-        deb_at = sys.gettrace() is not None
+        # debugger is not attached by default for new threads
+        # this may help to detect untraced cases
+        # deb_on = sys.gettrace() is not None
+        # deb_info = f"Debuger attached: {deb_on}"
+
+        # test, always main one?
+        cur_thread_name = threading.current_thread().name
         with QMutexLocker(QSafeThreadedPrint.mutex):
-            print(f"{threading.current_thread().name:>10}    Debug: {deb_at}     {msg}")
+            if QSafeThreadedPrint.final_handler:
+                QSafeThreadedPrint.final_handler(mode, context, f"{cur_thread_name:>10}   {msg}")
 
     @staticmethod
-    def print_qt_in_ouput():
+    def install_safe_qt_message_handler(final_handler):
+        """
+        Thread safely redirects qDebug, qWarning, etc to final_handler(msg)
+        also adds debug info
+        """
+        assert QSafeThreadedPrint.final_handler is None
+        QSafeThreadedPrint.final_handler = final_handler
+
         qInstallMessageHandler(QSafeThreadedPrint.log_handler)

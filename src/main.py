@@ -2,12 +2,13 @@ import sys
 from pathlib import Path
 
 # Qt intellisense pip install PySide6-stubs
-from PySide6.QtCore import Qt, Signal, Slot, qInstallMessageHandler, QtMsgType
+from PySide6.QtCore import Qt, Signal, Slot, QtMsgType
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QApplication, QAbstractSlider
 
 import helpers.os_helpers  # noqa: F401
 from lib.qt.qt import QListWidgetItemEx, QWindowUtils, q_info
+from lib.qt.qt_traced_thread import QSafeThreadedPrint
 from src.helpers.winapi.hotkey_events import virtual_code
 from src.helpers.winapi.processes import get_process_windows, filter_process_windows
 from src.messages import WinMsg, EnumArg
@@ -26,7 +27,7 @@ class MainWindow(MainWindowFrame):
         self.ui_cg = self.central_widget.command_group
         self.ui_wg = self.central_widget.window_group
 
-        qInstallMessageHandler(self.on_log)
+        QSafeThreadedPrint.install_safe_qt_message_handler(self.on_log)
 
         self.ui_wg.window_listbox.itemSelectionChanged.connect(self.on_window_select)
         self.ui_wg.refresh_windows_button.clicked.connect(self.on_refresh)
@@ -60,8 +61,8 @@ class MainWindow(MainWindowFrame):
     def on_log(self, mode, context, msg):
         if mode == QtMsgType.QtInfoMsg:
             self.ui_cw.log_text.append(msg)
-        elif mode != QtMsgType.QtDebugMsg:
-            print(msg)
+
+        print(msg)
 
     def on_refresh(self):
         self.update_hwnd_list()
@@ -143,5 +144,6 @@ class App(QApplication):
 
 
 if __name__ == "__main__":
+
     app = App()
     sys.exit(app.exec())
