@@ -64,7 +64,8 @@ class QComboBoxEx(QComboBox):
         """ min_content_length: limits QComboBox default width expand """
         super().__init__(parent)
         cur_index = None
-        for i, (key, value) in enumerate(values):
+        for i, key in enumerate(values):
+            value = values[key]
             self.addItem(key, value)
             if value == default_value:
                 cur_index = i

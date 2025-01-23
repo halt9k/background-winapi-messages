@@ -1,6 +1,7 @@
-from dataclasses import dataclass
-from typing import List, Tuple, Callable
+from collections import OrderedDict
+from typing import List, Tuple, Callable, Any, Union
 
+import win32api
 import win32con
 from win32api import SendMessage, PostMessage, keybd_event
 from win32gui import GetWindowRect, GetCursorPos
@@ -21,33 +22,24 @@ keyevent_args = [('KEYEVENTF_KEYDOWN', KEYEVENTF_KEYDOWN)] + common_keyevents
 
 common_wms = [win32con.WM_KEYDOWN, win32con.WM_CHAR, win32con.WM_KEYUP]
 
-@dataclass(init=True)
 class EnumArg:
-    named_values: List[Tuple[str, int]]
-    initial_value: int
+    def __init__(self, named_values: List[Tuple[str, Any]], initial_value):
+        # order is useful to have specific drop-down options on the top
+        self.named_values = OrderedDict(named_values)
+        self.initial_value = initial_value
 
 
-@dataclass
 class WinMsg:
-    def __init__(self, cmd, *args):
+    def __init__(self, cmd: Callable, *args: Union[EnumArg, str]):
         self.cmd = cmd
-        for arg in args:
-            if type(arg) is str:
-                self.str_arg1 = arg
-            if type(arg) is EnumArg:
-                self.enum_arg1 = arg
-
-    cmd: Callable
-    enum_arg1: EnumArg = None
-    str_arg1: str = None
+        self.args: List[Union[EnumArg, str]] = list(args)
 
 
 message_presets: List[WinMsg] = [
     # not packing commands even futher to keep debug transparent, arg order is kept for clarity
 
     # TODO test
-    # TODO https://stackoverflow.com/questions/59285854/is-there-a-way-to-send-a-click-event-to-a-window-in-the-background-in-python
-    WinMsg(mouse_events.send_click, EnumArg(mouse_events.msg_type, PostMessage)),
+    WinMsg(mouse_events.send_click, EnumArg(mouse_events.msg_type, win32api.PostMessage)),
     WinMsg(keybd_event, 'VK_LCONTROL', EnumArg(keyevent_args, KEYEVENTF_KEYDOWN)),
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYDOWN), 'a'),
     WinMsg(PostMessage, EnumArg(wm_args, win32con.WM_KEYUP), 'a'),
@@ -91,23 +83,27 @@ def key_code(key: str):
 def run_test_message(hwnd, win_msg: WinMsg):
     # cmd also can have any custom user function like mouse_events.send_click
 
-    key = key_code(win_msg.str_arg1) if win_msg.str_arg1 else None
-    enum_arg_value = win_msg.enum_arg1.initial_value if win_msg.enum_arg1 else None
-
     if win_msg.cmd == mouse_events.send_click:
         l, t, r, b = GetWindowRect(hwnd)
         cx, cy = GetCursorPos()
         # relative to window corner if top-level hwnd
         rx, ry = cx - l, cy - t
-        mouse_events.send_click(hwnd, rx, ry)
+        enum_arg_value = win_msg.args[0].initial_value
+        mouse_events.send_click(hwnd, rx, ry, enum_arg_value)
 
     elif win_msg.cmd == SendMessage:
+        enum_arg_value = win_msg.args[0].initial_value
+        key = key_code(win_msg.args[1])
         SendMessage(hwnd, enum_arg_value, key, 0)
 
     elif win_msg.cmd == PostMessage:
+        enum_arg_value = win_msg.args[0].initial_value
+        key = key_code(win_msg.args[1])
         PostMessage(hwnd, enum_arg_value, key, 0)
 
     elif win_msg.cmd == keybd_event:
+        key = key_code(win_msg.args[0])
+        enum_arg_value = win_msg.args[1].initial_value
         keybd_event(key, 0, enum_arg_value, 0)
 
     else:

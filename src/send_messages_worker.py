@@ -58,7 +58,7 @@ class SendMessagesWorker(QWorker):
         try:
             with self.request_timer.qntimer_timeout_guard():
                 self.send_messages(data)
-        except (RuntimeWarning) as e:
+        except RuntimeWarning as e:
             qWarning(str(e))
 
     @Slot()

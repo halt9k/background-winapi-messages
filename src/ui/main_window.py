@@ -1,4 +1,6 @@
-from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QTextEdit, QSizePolicy, QGridLayout, QListWidget, \
+from typing import List, Union
+
+from PySide6.QtWidgets import QMainWindow, QWidget, QGroupBox, QSizePolicy, QGridLayout, \
     QPushButton, QVBoxLayout, QLineEdit, QCheckBox, QAbstractItemView, QHBoxLayout
 
 from lib.qt.qt import QComboBoxEx, QListWidgetEx, QTextEditEx
@@ -8,7 +10,7 @@ from src.messages import EnumArg, message_presets
 
 class CommandWidget(QWidget):
     """ UI entry with checkbox is created for each command like SendMessage """
-    def __init__(self, parent, name, cmd, enabled=True, str_param=None, enum_param: EnumArg = None):
+    def __init__(self, parent, name, cmd, params: List[Union[EnumArg, str]], enabled=True):
         super().__init__(parent)
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -19,22 +21,21 @@ class CommandWidget(QWidget):
         self.layout.addWidget(self.enabled_check)
 
         self.cmd = cmd
-        self.str_param = str_param
-        self.enum_param = enum_param
+        self.params = params
+        for param in params:
+            if type(param) == str:
+                self.str_param_edit = QLineEdit(self)
+                self.str_param_edit.setText(param)
+                self.str_param_edit.setMaximumSize(self.str_param_edit.minimumSizeHint())
+                self.layout.addWidget(self.str_param_edit)
 
-        if str_param:
-            self.str_param_edit = QLineEdit(self)
-            self.str_param_edit.setText(str_param)
-            self.str_param_edit.setMaximumSize(self.str_param_edit.minimumSizeHint())
-            self.layout.addWidget(self.str_param_edit)
+            if type(param) == EnumArg:
+                self.enum_param_dropdown = QComboBoxEx(self, values=param.named_values,
+                                                       default_value=param.initial_value)
 
-        if enum_param:
-            self.enum_param_dropdown = QComboBoxEx(self, values=enum_param.named_values,
-                                                   default_value=enum_param.initial_value)
-
-            self.enum_param_dropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
-            self.layout.addWidget(self.enum_param_dropdown)
-            self.layout.setStretchFactor(self.enum_param_dropdown, 2)
+                self.enum_param_dropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
+                self.layout.addWidget(self.enum_param_dropdown)
+                self.layout.setStretchFactor(self.enum_param_dropdown, 2)
 
 
 class CommandGroup(QGroupBox):
@@ -45,8 +46,7 @@ class CommandGroup(QGroupBox):
         cmd_widgets = []
         for msg in message_presets:
             name = msg.cmd.__name__
-            cmd_widgets += [CommandWidget(self, name=name, cmd=msg.cmd,
-                                          str_param=msg.str_arg1, enum_param=msg.enum_arg1)]
+            cmd_widgets += [CommandWidget(self, name=name, cmd=msg.cmd, params=msg.args)]
 
         self.command_layout = QVBoxLayout(self)
         for w in cmd_widgets:
