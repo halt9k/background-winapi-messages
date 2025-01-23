@@ -14,8 +14,9 @@ class QTracedThread(QThread):
     QUIT_DEADLINE_MS = 500
     TERMINATION_DEADLINE_MS = 5000
 
-    # signal override is required here,
+    # custom signal is required here,
     # or PyCharm users specifically during debug may face incorrect thread of slots connected to started
+    # also https://forum.qt.io/post/819264
     started_fix = Signal()
 
     @override
