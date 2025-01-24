@@ -1,4 +1,3 @@
-import sys
 import threading
 from abc import abstractmethod
 

@@ -4,10 +4,10 @@ from pathlib import Path
 # Qt intellisense pip install PySide6-stubs
 from PySide6.QtCore import Qt, Signal, Slot, QtMsgType
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QApplication, QAbstractSlider
+from PySide6.QtWidgets import QApplication, QLineEdit
 
 import helpers.os_helpers  # noqa: F401
-from lib.qt.qt import QListWidgetItemEx, QWindowUtils, q_info
+from lib.qt.qt import QListWidgetItemEx, QWindowUtils, q_info, QComboBoxEx
 from lib.qt.qt_traced_thread import QSafeThreadedPrint
 from src.helpers.winapi.hotkey_events import virtual_code
 from src.helpers.winapi.processes import get_process_windows, filter_process_windows
@@ -126,9 +126,19 @@ class MainWindow(MainWindowFrame):
             if not cw.enabled_check.isChecked():
                 continue
 
-            str_arg = cw.str_param_edit.text() if cw.str_param else None
-            enum_arg_value = cw.enum_param_dropdown.currentData() if cw.enum_param else None
-            messages += [WinMsg(cw.cmd, str_arg, EnumArg([], enum_arg_value))]
+            params = cw.params
+            i = 0
+            for child in cw.children():
+                if type(child) is QComboBoxEx:
+                    assert type(params[i]) is EnumArg
+                    params[i].initial_value = child.currentData()
+                    i += 1
+                if type(child) is QLineEdit:
+                    assert type(params[i]) is str
+                    params[i] = child.text()
+                    i += 1
+
+            messages += [WinMsg(cw.cmd, *params)]
 
         hwnds = self.ui_wg.window_listbox.get_selected_data()
         data = SendData(hwnds, messages)
